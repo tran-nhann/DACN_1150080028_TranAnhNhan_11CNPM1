@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#082c30">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Aster Hotel — Không gian quản lý khách sạn.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Aster Hotel">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+
+  <title>Aster Hotel</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; height: 100%; background: #f5f7f9; }
+    #aster-startup {
+      position: fixed; inset: 0; z-index: 10000;
+      display: grid; place-items: center; grid-template-rows: minmax(0, 1fr);
+      background: #f5f7f9;
+      transition: opacity .4s ease;
+    }
+    #aster-startup.leaving { opacity: 0; pointer-events: none; }
+    .startup-frame {
+      position: relative; width: min(100%, 480px); height: 100%; min-height: 0;
+      overflow: hidden; display: grid; place-items: center; grid-template-rows: minmax(0, 1fr);
+      color: #aae4cd;
+      background: linear-gradient(135deg, #163f40, #082c30 55%, #062328);
+    }
+    .startup-frame::before, .startup-frame::after {
+      content: ''; position: absolute; width: 850px; height: 850px;
+      border-radius: 50%; pointer-events: none;
+      background: radial-gradient(circle, #3e977b30, transparent 65%);
+      top: -250px; left: 0;
+      animation: atmosphere 8s ease-in-out infinite alternate;
+    }
+    .startup-frame::after {
+      background: radial-gradient(circle, #24777c30, transparent 65%);
+      top: 50%; left: -500px; animation-delay: -4s;
+    }
+    .arches { position: absolute; inset: 16% 28px -100px; border: 1px solid #aae4cd10; border-radius: 240px 240px 0 0; }
+    .arches::before, .arches::after { content: ''; position: absolute; inset: 18px 18px -1px; border: inherit; border-radius: inherit; }
+    .arches::after { inset: 36px 36px -1px; }
+    .startup-content { position: relative; display: flex; align-items: center; flex-direction: column; padding-bottom: 31px; }
+    .aster-mark { position: relative; width: 260px; height: 260px; display: grid; place-items: center; }
+    .aster-mark::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, #aae4cd20, transparent 68%); }
+    .orbit { position: absolute; width: 72%; height: 72%; border: 1px solid #aae4cd1a; border-radius: 50%; }
+    .orbit::before { content: ''; position: absolute; inset: -1px; border: 1.5px solid transparent; border-top-color: #aae4cda0; border-radius: 50%; animation: orbit 3.2s linear infinite; }
+    .orbit.outer { width: 90%; height: 90%; animation: orbit 6.4s linear infinite reverse; }
+    .orbit.outer::before { inset: auto; top: 50%; left: -3px; width: 6px; height: 6px; background: #aae4cd; border: 0; animation: none; }
+    .orbit.outer::after { content: ''; position: absolute; bottom: 6%; right: 23%; width: 4px; height: 4px; border-radius: 50%; background: #aae4cd60; }
+    .mark-tile {
+      width: 114px; height: 114px; border-radius: 34px; border: 1px solid #aae4cd3b;
+      background: linear-gradient(135deg, #24635c, #103d3e);
+      display: grid; place-items: center; box-sizing: border-box;
+    }
+    .mark-tile svg { width: 80px; height: 80px; animation: breathe 3.2s ease-in-out infinite; }
+    .petal { animation: petal 3.2s ease-in-out infinite; }
+    .p1 { animation-delay: -.25s; } .p2 { animation-delay: -.5s; }
+    .p3 { animation-delay: -.75s; } .p4 { animation-delay: -1s; }
+    .p5 { animation-delay: -1.25s; } .p6 { animation-delay: -1.5s; } .p7 { animation-delay: -1.75s; }
+    .wordmark { color: #f0f7f2; font: 700 38px/1.2 'Aster Manrope', sans-serif; letter-spacing: 5px; margin-top: 12px; }
+    .loading-dots { display: flex; gap: 10px; margin-top: 36px; }
+    .loading-dots i { width: 5px; height: 5px; border-radius: 50%; background: #aae4cd; animation: petal 1.6s ease-in-out infinite; }
+    .loading-dots i:nth-child(2) { animation-delay: -.25s; } .loading-dots i:nth-child(3) { animation-delay: -.5s; }
+    .startup-footer { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); width: 32px; height: 3px; border-radius: 4px; background: #aae4cd40; }
+    @font-face { font-family: 'Aster Manrope'; src: url('assets/assets/fonts/Manrope.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
+    @keyframes orbit { to { transform: rotate(360deg); } }
+    @keyframes breathe { 50% { transform: scale(1.04) rotate(3deg); } }
+    @keyframes petal { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+    @keyframes atmosphere { to { transform: translate(20px, -15px); } }
+    @media (max-height: 450px) { .startup-content { transform: scale(.7); } }
+    @media (prefers-reduced-motion: reduce) {
+      #aster-startup, #aster-startup * { animation: none !important; transition: none !important; }
+      #aster-startup *::before, #aster-startup *::after { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="aster-startup" role="status" aria-label="Đang mở Aster Hotel">
+    <div class="startup-frame" aria-hidden="true">
+      <div class="arches"></div>
+      <div class="startup-content">
+        <div class="aster-mark">
+          <div class="orbit"></div><div class="orbit outer"></div>
+          <div class="mark-tile">
+            <svg viewBox="-40 -40 80 80" fill="currentColor">
+              <defs><ellipse id="aster-petal" cx="0" cy="-21" rx="7.6" ry="16.3" /></defs>
+              <use class="petal" href="#aster-petal" />
+              <use class="petal p1" href="#aster-petal" transform="rotate(45)" />
+              <use class="petal p2" href="#aster-petal" transform="rotate(90)" />
+              <use class="petal p3" href="#aster-petal" transform="rotate(135)" />
+              <use class="petal p4" href="#aster-petal" transform="rotate(180)" />
+              <use class="petal p5" href="#aster-petal" transform="rotate(225)" />
+              <use class="petal p6" href="#aster-petal" transform="rotate(270)" />
+              <use class="petal p7" href="#aster-petal" transform="rotate(315)" />
+              <circle r="5.3" />
+            </svg>
+          </div>
+        </div>
+        <div class="wordmark">aster</div>
+        <div class="loading-dots"><i></i><i></i><i></i></div>
+      </div>
+      <div class="startup-footer"></div>
+    </div>
+  </div>
+  <script>
+    // Keep the launch artwork visible until Flutter has actually painted.
+    window.addEventListener('flutter-first-frame', function () {
+      const startup = document.getElementById('aster-startup');
+      if (!startup) return;
+      startup.classList.add('leaving');
+      startup.addEventListener('transitionend', () => startup.remove(), { once: true });
+      setTimeout(() => startup.remove(), 450);
+    }, { once: true });
+  </script>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
