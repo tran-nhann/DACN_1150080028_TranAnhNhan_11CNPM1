@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'models.dart';
+import 'billing_models.dart';
+import 'revenue_models.dart';
+import 'room_move_models.dart';
 
 class ApiFailure implements Exception {
   const ApiFailure(this.message, {this.fields = const {}});
@@ -70,6 +75,8 @@ class ApiClient {
               await refresh();
               request.extra['retried'] = true;
               request.headers['Authorization'] = 'Bearer $_access';
+              final roomForm = request.extra['roomForm'];
+              if (roomForm is FormData Function()) request.data = roomForm();
               handler.resolve(await _dio.fetch<dynamic>(request));
               return;
             } catch (refreshError) {
@@ -177,11 +184,20 @@ class ApiClient {
   Future<DashboardData> dashboard() async =>
       DashboardData.fromJson(await _get('dashboard/'));
 
+  Future<RevenueEstimate> revenueEstimate(RevenueQuery query) async =>
+      RevenueEstimate.fromJson(
+        await _get('reports/revenue-estimate/', {
+          'start_date': query.start,
+          'end_date': query.end,
+        }),
+      );
+
   Future<PagedResult<HotelRoom>> rooms(RoomQuery query) async {
     final data = await _get('rooms/', {
       'search': query.search,
       if (query.condition.isNotEmpty) 'status': query.condition,
       if (query.floor != null) 'floor': query.floor,
+      if (query.roomType != null) 'room_type': query.roomType,
       'page': query.page,
     });
     return PagedResult(
@@ -194,10 +210,18 @@ class ApiClient {
   }
 
   Future<List<RoomType>> roomTypes() async {
-    final data = await _get('room-types/');
-    return (data['results'] as List)
-        .map((item) => RoomType.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final types = <RoomType>[];
+    var page = 1;
+    while (true) {
+      final data = await _get('room-types/', {'page': page});
+      types.addAll(
+        (data['results'] as List).map(
+          (item) => RoomType.fromJson(item as Map<String, dynamic>),
+        ),
+      );
+      if (data['next'] == null) return types;
+      page++;
+    }
   }
 
   Future<PagedResult<Guest>> guests(GuestQuery query) async {
@@ -276,10 +300,53 @@ class ApiClient {
           (item) => HotelRoom.fromJson(item as Map<String, dynamic>),
         ),
       );
+
       if (data['next'] == null) break;
       page++;
     }
     return PagedResult(items: items, count: items.length, hasNext: false);
+  }
+
+  Future<HotelRoom> getRoom(int id) async =>
+      HotelRoom.fromJson(await _get('rooms/$id/'));
+
+  Future<RoomMoveOptions> roomMoveOptions(int bookingId) async =>
+      RoomMoveOptions.fromJson(
+        await _get('bookings/$bookingId/transfer-options/'),
+      );
+
+  Future<RoomMoveQuote> roomMoveQuote(
+    int bookingId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        'bookings/$bookingId/transfer-quote/',
+        data: data,
+      );
+      return RoomMoveQuote.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
+  Future<HotelBooking> moveRoom(
+    int bookingId,
+    Map<String, dynamic> data,
+    String key,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        'bookings/$bookingId/transfer/',
+        data: data,
+        options: Options(headers: {'Idempotency-Key': key}),
+      );
+      return HotelBooking.fromJson(
+        response.data!['booking'] as Map<String, dynamic>,
+      );
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
   }
 
   Future<HotelBooking> createBooking(
@@ -314,8 +381,58 @@ class ApiClient {
     }
   }
 
-  Future<void> saveRoom(Map<String, dynamic> room) async =>
-      _post('rooms/', room);
+  String roomImageUrl(String url) =>
+      Uri.parse(_dio.options.baseUrl).resolve(url).toString();
+
+  Future<HotelBooking> getBooking(int id) async {
+    final data = await _get('bookings/$id/', {});
+    return HotelBooking.fromJson(data);
+  }
+
+  Future<TimelineData> roomTimeline({
+    String? startDate,
+    int days = 7,
+    int? floor,
+  }) async {
+    final query = <String, dynamic>{'days': days};
+    if (startDate != null) query['start_date'] = startDate;
+    if (floor != null && floor > 0) query['floor'] = floor;
+    final data = await _get('rooms/timeline/', query);
+    return TimelineData.fromJson(data);
+  }
+
+  Future<HotelRoom> saveRoom(
+    Map<String, dynamic> room, {
+    int? id,
+    List<Uint8List> images = const [],
+  }) async {
+    try {
+      final path = id == null ? 'rooms/' : 'rooms/$id/';
+      // Build fresh FormData for every attempt, including a token-refresh retry.
+      FormData form() => FormData.fromMap({
+        'data': jsonEncode(room),
+        'upload_images': [
+          for (var i = 0; i < images.length; i++)
+            MultipartFile.fromBytes(images[i], filename: 'room-$i.jpg'),
+        ],
+      });
+      final response = await _dio.request<Map<String, dynamic>>(
+        path,
+        data: images.isEmpty ? room : form(),
+        options: Options(
+          method: id == null ? 'POST' : 'PATCH',
+          contentType: images.isEmpty
+              ? Headers.jsonContentType
+              : Headers.multipartFormDataContentType,
+          extra: images.isEmpty ? null : {'roomForm': form},
+        ),
+      );
+      return HotelRoom.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
   Future<PagedResult<HotelService>> services(ServiceQuery query) async {
     final data = await _get('services/', {
       'search': query.search,
@@ -338,15 +455,122 @@ class ApiClient {
         .toList();
   }
 
-  Future<HotelService> saveService(Map<String, dynamic> data, {int? id}) async {
+  Future<HotelService> saveService(
+    Map<String, dynamic> data, {
+    int? id,
+    Uint8List? image,
+  }) async {
     try {
-      final response = id == null
-          ? await _dio.post<Map<String, dynamic>>('services/', data: data)
-          : await _dio.patch<Map<String, dynamic>>('services/$id/', data: data);
+      FormData form() => FormData.fromMap({
+        ...data,
+        'image': MultipartFile.fromBytes(image!, filename: 'service.jpg'),
+      });
+      final response = await _dio.request<Map<String, dynamic>>(
+        id == null ? 'services/' : 'services/$id/',
+        data: image == null ? data : form(),
+        options: Options(
+          method: id == null ? 'POST' : 'PATCH',
+          contentType: image == null
+              ? Headers.jsonContentType
+              : Headers.multipartFormDataContentType,
+          extra: image == null ? null : {'roomForm': form},
+        ),
+      );
       return HotelService.fromJson(response.data!);
     } on DioException catch (error) {
       throw failureFrom(error);
     }
+  }
+
+  Future<void> deleteService(int id) async {
+    try {
+      await _dio.delete<dynamic>('services/$id/');
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
+  Future<HotelService> getService(int id) async =>
+      HotelService.fromJson(await _get('services/$id/'));
+
+  Future<ServiceUsage> addPlannedService(
+    int bookingId,
+    Map<String, dynamic> data,
+    String key,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        'bookings/$bookingId/planned-services/',
+        data: data,
+        options: Options(headers: {'Idempotency-Key': key}),
+      );
+      return ServiceUsage.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
+  Future<ServiceUsage> cancelPlannedService(
+    int bookingId,
+    int planId,
+    String reason,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        'bookings/$bookingId/planned-services/$planId/cancel/',
+        data: {'reason': reason},
+      );
+      return ServiceUsage.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
+  Future<BillingState> folio(int bookingId) async =>
+      BillingState.fromJson(await _get('bookings/$bookingId/folio/'));
+
+  Future<CheckoutResult> checkout(
+    int bookingId,
+    Map<String, dynamic> data,
+    String key,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        'bookings/$bookingId/check-out/',
+        data: data,
+        options: Options(headers: {'Idempotency-Key': key}),
+      );
+      return CheckoutResult.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
+  Future<HotelRoom> confirmCleaned(int roomId, DateTime version) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        'rooms/$roomId/confirm-cleaned/',
+        data: {'expected_updated_at': version.toUtc().toIso8601String()},
+      );
+      return HotelRoom.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw failureFrom(error);
+    }
+  }
+
+  Future<PagedResult<HotelInvoice>> invoices(InvoiceQuery query) async {
+    final data = await _get('invoices/', {
+      'search': query.search,
+      if (query.method.isNotEmpty) 'method': query.method,
+      'page': query.page,
+    });
+    return PagedResult(
+      items: (data['results'] as List)
+          .map((row) => HotelInvoice.fromJson(row as Map<String, dynamic>))
+          .toList(),
+      count: data['count'] as int,
+      hasNext: data['next'] != null,
+    );
   }
 
   Future<StayServices> stayServices(StayServiceQuery query) async =>

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:async';
 
 import 'package:aster_hotel/core/api.dart';
@@ -98,7 +99,11 @@ class ServiceApi extends StubApi {
   }
 
   @override
-  Future<HotelService> saveService(Map<String, dynamic> data, {int? id}) async {
+  Future<HotelService> saveService(
+    Map<String, dynamic> data, {
+    int? id,
+    Uint8List? image,
+  }) async {
     catalogWrites++;
     catalogData.add(Map.of(data));
     if (pendingCatalog != null) return pendingCatalog!.future;

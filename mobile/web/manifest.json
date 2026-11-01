@@ -1,11 +1,11 @@
 {
-    "name": "Aster Hotel",
-    "short_name": "Aster",
+    "name": "Khách sạn Ngàn Sao",
+    "short_name": "Ngàn Sao",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F5F7F9",
     "theme_color": "#123F43",
-    "description": "Không gian quản lý khách sạn Aster.",
+    "description": "Không gian quản lý Khách sạn Ngàn Sao.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

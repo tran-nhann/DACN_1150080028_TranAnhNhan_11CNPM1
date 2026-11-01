@@ -94,6 +94,10 @@ TIME_ZONE = "Asia/Ho_Chi_Minh"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+# Ten room photos of at most 5 MB each, plus multipart/form metadata.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 55 * 1024 * 1024
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = os.getenv(
     "CORS_ALLOWED_ORIGINS", "http://localhost:4173,http://127.0.0.1:4173"

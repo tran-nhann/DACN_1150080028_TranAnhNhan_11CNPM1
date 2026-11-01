@@ -58,13 +58,13 @@ class AppShell extends ConsumerWidget {
                         child: Center(
                           child: CircleAvatar(
                             radius: 18,
-                            backgroundColor: const Color(0xFFEBF3EF),
+                            backgroundColor: AsterColors.goldLight,
                             child: Text(
                               user.name.isEmpty
                                   ? 'A'
                                   : user.name.substring(0, 1),
                               style: const TextStyle(
-                                color: AsterColors.teal,
+                                color: AsterColors.navy,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 14,
                               ),
@@ -120,10 +120,12 @@ class PageBody extends StatelessWidget {
   const PageBody({
     super.key,
     required this.child,
+    this.footer,
     this.onRefresh,
     this.scrollController,
   });
   final Widget child;
+  final Widget? footer;
   final Future<void> Function()? onRefresh;
   final ScrollController? scrollController;
   @override
@@ -136,9 +138,19 @@ class PageBody extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
-    return onRefresh == null
+    final body = onRefresh == null
         ? scroll
         : RefreshIndicator(onRefresh: onRefresh!, child: scroll);
+
+    if (footer == null) return body;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: body),
+        footer!,
+      ],
+    );
   }
 }
 

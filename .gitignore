@@ -4,6 +4,7 @@
 node_modules/
 .env
 backend/.env
+backend/media/
 __pycache__/
 *.py[cod]
 .pytest_cache/

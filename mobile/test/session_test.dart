@@ -30,6 +30,77 @@ ResponseBody jsonBody(Map<String, dynamic> data, int status) =>
     );
 
 void main() {
+  test('Room upload retries with fresh multipart after refresh and resolves media against API host', () async {
+    final transport = Dio(BaseOptions(baseUrl: 'http://10.0.2.2:8000/api/v1/'));
+    final refreshTransport = Dio(
+      BaseOptions(baseUrl: 'http://10.0.2.2:8000/api/v1/'),
+    );
+    final forms = <FormData>[];
+    transport.httpClientAdapter = StubAdapter((request) async {
+      expect(request.method, 'PATCH');
+      expect(request.path, 'rooms/1/');
+      final form = request.data as FormData;
+      forms.add(form);
+      expect(
+        jsonDecode(form.fields.single.value)['description'],
+        'Phòng có ban công',
+      );
+      expect(form.files.single.key, 'upload_images');
+      expect(form.files.single.value.length, 3);
+      if (forms.length == 1) return jsonBody({}, 401);
+      expect(request.headers['Authorization'], 'Bearer new-access');
+      return jsonBody({
+        'id': 1,
+        'number': '101',
+        'floor': 1,
+        'condition': 'ready',
+        'notes': '',
+        'description': 'Phòng có ban công',
+        'area': '32.50',
+        'bed_count': 1,
+        'bed_type': 'queen',
+        'view': 'Vườn',
+        'amenities': ['Wi-Fi'],
+        'images': [
+          {'id': 1, 'url': '/media/rooms/1/photo.png', 'position': 0},
+        ],
+        'room_type': {
+          'id': 1,
+          'name': 'Deluxe',
+          'description': '',
+          'capacity': 2,
+          'base_rate': '950000',
+        },
+      }, 200);
+    });
+    refreshTransport.httpClientAdapter = StubAdapter(
+      (request) async =>
+          jsonBody({'access': 'new-access', 'refresh': 'new-refresh'}, 200),
+    );
+    final store = MemorySessionStore()..token = 'old-refresh';
+    final api = ApiClient(
+      store: store,
+      transport: transport,
+      refreshTransport: refreshTransport,
+    );
+    final saved = await api.saveRoom(
+      {'description': 'Phòng có ban công'},
+      id: 1,
+      images: [
+        Uint8List.fromList([1, 2, 3]),
+      ],
+    );
+    expect(saved.area, 32.5);
+    expect(saved.amenities, ['Wi-Fi']);
+    expect(forms, hasLength(2));
+    expect(identical(forms[0], forms[1]), isFalse);
+    expect(
+      api.roomImageUrl(saved.images.single.url),
+      'http://10.0.2.2:8000/media/rooms/1/photo.png',
+    );
+    expect(store.token, 'new-refresh');
+  });
+
   test('Service API preserves request key, quoted price, cancellation reason and server totals', () async {
     final transport = Dio(BaseOptions(baseUrl: 'https://example.test/'));
     final usage = <String, dynamic>{

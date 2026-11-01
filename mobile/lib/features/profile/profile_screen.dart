@@ -6,6 +6,8 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../shell/app_shell.dart';
+import '../dashboard/revenue_report.dart';
+import '../bookings/invoices_panel.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -133,6 +135,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 28),
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Hóa đơn & phiếu thu'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showAsterSheet<void>(
+                context: context,
+                form: true,
+                builder: (_) => const InvoicesPanel(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (user.isAdmin || user.role == 'manager') ...[
+            Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                leading: const Icon(
+                  Icons.insights_rounded,
+                  color: AsterColors.navy,
+                ),
+                title: const Text(
+                  'Doanh thu ước tính',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showAsterSheet<void>(
+                  context: context,
+                  form: true,
+                  builder: (_) => const RevenueReport(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
           SizedBox(
             width: double.infinity,
             child: PressScale(

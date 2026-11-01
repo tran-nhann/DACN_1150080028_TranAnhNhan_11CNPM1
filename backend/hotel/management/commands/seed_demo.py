@@ -76,8 +76,15 @@ class Command(BaseCommand):
                     "notes": "Dữ liệu giả phục vụ demo",
                 },
             )
-        for name, unit, price in [("Nước suối", "chai", 15000), ("Giặt ủi", "kg", 30000), ("Ăn sáng", "suất", 60000), ("Đưa đón", "lượt", 200000)]:
-            ServiceItem.objects.get_or_create(name=name, defaults={"unit": unit, "unit_price": price})
+        for name, unit, price, category, description in [
+            ("Nước suối", "chai", 15000, "minibar", "Nước uống đóng chai, tính theo số chai sử dụng."),
+            ("Giặt ủi", "kg", 30000, "laundry", "Giặt ủi quần áo, tính theo khối lượng đồ nhận giặt."),
+            ("Ăn sáng", "suất", 60000, "food", "Phục vụ bữa sáng, tính theo số suất khách sử dụng."),
+            ("Đưa đón", "lượt", 200000, "transport", "Dịch vụ xe đưa đón khách, tính theo số lượt."),
+        ]:
+            ServiceItem.objects.get_or_create(name=name, defaults={
+                "unit": unit, "unit_price": price, "category": category, "description": description,
+            })
         self.stdout.write(
             self.style.SUCCESS(
                 "Đã seed tài khoản, phòng, khách và 4 dịch vụ mẫu. Mật khẩu nằm trong backend/.env."

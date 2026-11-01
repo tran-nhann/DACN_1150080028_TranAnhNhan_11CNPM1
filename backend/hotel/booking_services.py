@@ -2,6 +2,7 @@ import hashlib
 import json
 from contextlib import ExitStack
 from datetime import timedelta
+from uuid import uuid5
 
 from django.db.models import Q
 from django.utils import timezone
@@ -86,6 +87,8 @@ def create_booking(actor, key, data):
                 "quote": str(data.get("expected_nightly_rate"))
                 if data.get("expected_nightly_rate") is not None
                 else None,
+                **({"services": [{"service": row["service_id"], "quantity": row["quantity"], "quote": str(row["expected_unit_price"])}
+                    for row in sorted(data["services"], key=lambda row: row["service_id"])]} if data.get("services") else {}),
             },
             sort_keys=True,
         ).encode()
@@ -117,6 +120,9 @@ def create_booking(actor, key, data):
                 request_fingerprint=fingerprint,
             )
             record_audit(actor, "booking_create", booking)
+            from .planned_services import make_plan
+            for row in data.get("services", []):
+                make_plan(actor, booking, uuid5(key, f"service:{row['service_id']}"), row)
             return booking, True
 
 
@@ -131,6 +137,10 @@ def cancel_booking(actor, booking_id):
                 raise BookingConflict("Chỉ hủy được đặt phòng chưa nhận.")
             booking.status = Booking.Status.CANCELLED
             booking.save(update_fields=["status", "updated_at"])
+            for plan in booking.service_plans.filter(status="reserved"):
+                plan.status, plan.cancelled_at, plan.cancelled_by, plan.cancel_reason = "cancelled", timezone.now(), actor, "Đặt phòng đã hủy"
+                plan.save(update_fields=["status", "cancelled_at", "cancelled_by", "cancel_reason"])
+                record_audit(actor, "service_plan_cancel", plan)
             record_audit(actor, "booking_cancel", booking)
             return booking
 
@@ -141,6 +151,8 @@ def check_in(actor, booking_id):
         booking = get_booking(booking_id)
         with room_transaction(booking.room_id):
             if booking.status == Booking.Status.CHECKED_IN:
+                if getattr(booking, "stay", None) is None:
+                    raise BookingConflict("Booking đang ở nhưng thiếu hồ sơ nhận phòng. Cần khôi phục hồ sơ lưu trú.")
                 return booking
             if booking.status != Booking.Status.CONFIRMED:
                 raise BookingConflict("Đặt phòng không thể nhận phòng.")
@@ -156,7 +168,9 @@ def check_in(actor, booking_id):
                 .exists()
             ):
                 raise BookingConflict("Phòng đang có khách lưu trú.")
-            Stay.objects.create(booking=booking, checked_in_at=timezone.now(), checked_in_by=actor)
+            stay = Stay.objects.create(booking=booking, checked_in_at=timezone.now(), checked_in_by=actor)
+            from .planned_services import post_plans
+            post_plans(actor, booking, stay)
             booking.status = Booking.Status.CHECKED_IN
             booking.save(update_fields=["status", "updated_at"])
             record_audit(actor, "booking_check_in", booking)
@@ -208,7 +222,9 @@ def extend_booking(actor, booking_id, end):
                 booking.start_date, end, allow_past=booking.status == Booking.Status.CHECKED_IN
             )
             room = get_room(booking.room_id)
-            assert_available(room, booking.start_date, end, booking.guests, exclude=booking.pk)
+            moves = list(booking.room_moves.all())
+            allocation_start = moves[-1].effective_date if moves else booking.start_date
+            assert_available(room, allocation_start, end, booking.guests, exclude=booking.pk)
             booking.end_date = end
             booking.save(update_fields=["end_date", "updated_at"])
             record_audit(actor, "booking_extend", booking)

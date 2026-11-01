@@ -8,7 +8,7 @@
 - Ba vai trò: `admin`, `receptionist`, `manager`; kiểm tra quyền ở API và điều hướng UI.
 - Dashboard phòng sẵn sàng/đang ở/đã đặt/cần dọn/bảo trì, khách đến/đi và số khách đang ở.
 - Tìm kiếm phòng, lọc trạng thái/tầng, phân trang, xem chi tiết và cập nhật tình trạng vận hành.
-- Admin thêm phòng; danh mục loại phòng có API tạo/sửa, hiện seed sẵn bốn loại.
+- Admin thêm/sửa phòng, mô tả, diện tích, giường, hướng nhìn, tiện nghi và ghi chú nội bộ; tải nhiều ảnh và chọn ảnh bìa. Danh mục loại phòng có API tạo/sửa, hiện seed sẵn bốn loại.
 - Admin/lễ tân tìm kiếm, thêm và cập nhật khách hàng. Người quản lý không được truy cập thông tin khách hàng trong bản này.
 - Nhật ký thay đổi, kiểm tra dữ liệu đầu vào và ràng buộc toàn vẹn ở SQL Server.
 - UI dành cho điện thoại, điều hướng dưới, ít chữ; font Manrope được đóng gói trong app.
@@ -51,6 +51,8 @@ Thêm `-Build` sau khi sửa Flutter, thêm `-RestartApi` sau khi sửa backend.
 
 Bản xem nhanh **http://127.0.0.1:4173** là cùng app Flutter, được giới hạn khung điện thoại, không phải website riêng. Dùng `start-dev.ps1 -Rebuild` để cập nhật bản xem này.
 
+Server preview dùng mã build trong địa chỉ JavaScript, font/icon và tài nguyên đóng gói, đồng thời tắt cache HTTP để trình duyệt không giữ giao diện hoặc bộ icon cũ sau khi build lại. `start-dev.ps1` tự chuyển server preview cũ sang cách phục vụ này.
+
 Các tài khoản development:
 
 | Tên đăng nhập | Vai trò |
@@ -84,7 +86,7 @@ Hoặc chạy riêng hai terminal:
 .\.venv\Scripts\python.exe backend/manage.py runserver 127.0.0.1:8000
 
 # Terminal 2: bản Flutter đã build
-.\.venv\Scripts\python.exe -m http.server 4173 --bind 127.0.0.1 --directory mobile/build/web
+.\.venv\Scripts\python.exe scripts/serve_preview.py
 ```
 
 ## Dựng lại môi trường
@@ -127,6 +129,20 @@ Source mặc định dùng `http://10.0.2.2:8000/api/v1/` cho Android. APK debug
 
 ## API và quản trị
 
+Trong app, đăng nhập **admin → Phòng → chọn phòng → biểu tượng Sửa phòng** để cập nhật thông tin và hình ảnh. Nút **+** mở form thêm phòng với cùng các mục. Chi tiết phòng hiển thị ảnh bìa, thư viện ảnh có thể phóng to, thông số, mô tả, tiện nghi, ghi chú và lịch đặt. Phòng cũ chưa nhập thông số/ảnh sẽ hiển thị trạng thái chưa cập nhật; không tự điền thông tin giả.
+
+Thông số phòng hiển thị theo hàng `Nhãn: giá trị`, giá trị in đậm. Thanh nút chính của đặt phòng mới, đổi lịch/phòng, xác nhận gia hạn và thêm/sửa phòng nằm cố định bên dưới vùng nội dung cuộn; khi mở bàn phím, thanh này nằm phía trên bàn phím. Lịch đặt có mã riêng và màu theo ngày đến: hôm nay màu cam, ngày mai xanh dương, còn nhiều ngày tím, trễ ngày nhận đỏ; lịch đã hủy dùng thẻ hồng nhạt và nhãn Đã hủy. Các nhãn này tính theo ngày khách sạn, không suy diễn giờ nhận phòng khi dữ liệu chưa lưu giờ cụ thể.
+
+Mỗi phòng tối đa 10 ảnh JPG/PNG/WebP, mỗi ảnh tối đa 5 MB và 25 triệu điểm ảnh. Chọn biểu tượng ngôi sao để đặt ảnh bìa; thao tác xóa/chọn ảnh chỉ được ghi nhận khi lưu phòng. Ảnh lưu tại `backend/media/` (không đưa vào Git); cần sao lưu thư mục này cùng database. Development phục vụ ảnh qua `/media/` khi `DEBUG=True`; production cần cấu hình web server/storage phục vụ `MEDIA_URL`.
+
+Bộ ảnh mẫu có sẵn tại `backend/hotel/demo_assets/rooms/`: 4 loại phòng × 3 ảnh (phòng ngủ, góc nội thất, phòng tắm). Đây là ảnh nội thất hư cấu tạo bằng AI cho bản demo. Các phòng cùng loại dùng chung bộ ảnh mẫu; file phục vụ được sao chép riêng cho từng phòng nên sửa/xóa ảnh một phòng không ảnh hưởng phòng khác. Nạp ảnh cho phòng chưa có gallery bằng lệnh dưới; chạy lại không tạo trùng hoặc ghi đè gallery đã nhập:
+
+```powershell
+.\.venv\Scripts\python.exe backend/manage.py seed_room_images
+```
+
+API tạo/sửa phòng nhận JSON cho thông tin. Khi kèm ảnh, gửi multipart gồm `data` (chuỗi JSON) và các file lặp tên `upload_images`. `image_ids` là danh sách ID ảnh giữ lại theo thứ tự (bỏ trường này để giữ toàn bộ ảnh cũ, gửi `[]` để bỏ toàn bộ); `cover_upload_index` là chỉ số từ 0 của ảnh tải mới được chọn làm bìa. Lưu thông tin và thư viện ảnh trong cùng transaction; chỉ admin được ghi, các vai trò còn lại được xem.
+
 - Health: `GET /api/v1/health/`
 - Đăng nhập: `POST /api/v1/auth/login/`
 - Refresh: `POST /api/v1/auth/refresh/`
@@ -136,10 +152,18 @@ Source mặc định dùng `http://10.0.2.2:8000/api/v1/` cho Android. APK debug
 - Phòng: `GET/POST /api/v1/rooms/`, `GET/PUT/PATCH /api/v1/rooms/{id}/`
 - Đổi tình trạng: `POST /api/v1/rooms/{id}/condition/`
 - Loại phòng: `/api/v1/room-types/`
+- Bộ lọc phòng kết hợp: `GET /api/v1/rooms/?room_type=1&floor=2&status=ready&search=201` (bỏ trường không chọn). Trên app mở **Phòng → Bộ lọc phòng** để chọn hạng, tầng và trạng thái; nút Xóa bộ lọc đặt lại ba lựa chọn.
+- Danh mục dịch vụ: `GET/POST /api/v1/services/`, `GET/PUT/PATCH/DELETE /api/v1/services/{id}/`. Hồ sơ có nhóm, mô tả, ảnh, đơn vị, giá, ghi chú, trạng thái, ngày tạo/cập nhật và số khoản sử dụng. Admin mở chi tiết để sửa/xóa; DELETE trả 409 nếu đã có lịch sử sử dụng, kể cả khoản đã hủy. Có thể ngừng bán để giữ lịch sử.
+- Ảnh dịch vụ: gửi multipart trường `image` cùng các trường thông tin, hoặc JSON `remove_image: true` để bỏ ảnh; JPG/PNG/WebP tối đa 5 MB và 25 triệu điểm ảnh. File cũ chỉ xóa sau khi transaction thành công.
+- Doanh thu ước tính (admin/quản lý): `GET /api/v1/reports/revenue-estimate/?start_date=2026-10-01&end_date=2026-11-01`. Kỳ `[start_date, end_date)` tối đa 366 ngày, mặc định tháng hiện tại. App có thẻ trên Tổng quan và mục **Thêm → Doanh thu ước tính**, chọn ngày/kỳ, biểu đồ và tổng theo hạng phòng hiện tại.
 - Khách hàng: `/api/v1/customers/`
 - Phòng trống theo ngày: `GET /api/v1/rooms/availability/?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&guests=1`
 - Đặt phòng: `GET/POST /api/v1/bookings/`; POST cần UUID trong header `Idempotency-Key`.
+- Đặt kèm dịch vụ ngay khi chọn phòng: POST booking nhận `services: [{service_id, quantity, expected_unit_price}]` tùy chọn; lưu cùng booking trong một transaction. Trước check-in có API `planned-services/` để bổ sung/hủy, check-in chuyển khoản vào lưu trú một lần. Xem [dịch vụ qua bốn thời điểm](docs/PHASE_05_SERVICE_LIFECYCLE.md).
 - Hành động: `POST /api/v1/bookings/{id}/cancel/`, `check-in/`, `reschedule/`, `extend/`.
+- Trả phòng: `GET /api/v1/bookings/{id}/folio/` → `POST /api/v1/bookings/{id}/check-out/`. Thu đủ bằng tiền mặt/chuyển khoản, giữ mã yêu cầu chống gửi lặp, chốt hóa đơn và chuyển Cần dọn trong cùng transaction. Chi tiết tại [Check-out và billing](docs/PHASE_04_CHECKOUT_BILLING.md).
+- Hóa đơn/phiếu thu: `GET /api/v1/invoices/`, `GET /api/v1/invoices/{id}/`; trên app **Thêm → Hóa đơn & phiếu thu** hoặc mở booking Đã trả. Hồ sơ giữ nguyên giá và thông tin lúc chốt, không sửa/xóa trực tiếp.
+- Xác nhận dọn phòng: `POST /api/v1/rooms/{id}/confirm-cleaned/` với `expected_updated_at`. Có nút trên hồ sơ phòng và truy cập từ ô Cần dọn trong sơ đồ lịch.
 - Django Admin: `http://127.0.0.1:8000/admin/`; dùng tài khoản `admin` development.
 
 Các endpoint nghiệp vụ yêu cầu `Authorization: Bearer <access>`. Danh sách có phân trang 30 bản ghi; hỗ trợ search và bộ lọc có kiểm tra dữ liệu. Mã lỗi được chuẩn hóa trong object `error`, kèm request ID. Không có endpoint xóa trực tiếp phòng/khách hàng trong bản đầu.
@@ -155,6 +179,30 @@ Migrations blacklist của Simple JWT 5.5.1 được lưu tại `backend/jwt_mig
 Cấu hình development tin chứng thư local tự ký và dùng tài khoản Windows hiện tại. Khi triển khai cần DEBUG=False, secret riêng, database user có quyền tối thiểu, HTTPS, chứng thư database hợp lệ, allowed hosts/CORS cụ thể và cơ chế hạn chế đăng nhập dùng cache chia sẻ. Bản hiện tại dùng throttling cache local của DRF cho development.
 
 ## Kiểm tra
+
+Kiểm tra form phòng và thư viện ảnh trên preview (fixture riêng, không ghi database khách sạn):
+
+```powershell
+node scripts/check-rooms-preview.cjs
+```
+
+Kiểm tra trình duyệt có service worker cũ vẫn tải bản hiện tại và admin thật mở được form phòng (chỉ đăng nhập/đọc dữ liệu):
+
+```powershell
+node scripts/check-preview-cache.cjs
+```
+
+Kiểm tra thông số ngang, icon mô tả, lịch có màu/nhãn ngày đến và các nút cố định với danh sách 30 phòng (fixture riêng):
+
+```powershell
+node scripts/check-room-layout-preview.cjs
+```
+
+Sau khi nạp ảnh mẫu, kiểm tra toàn bộ ảnh bằng API thật, thử tải ảnh/đổi bìa/xóa ảnh thử rồi khôi phục gallery, và mở thư viện 4 loại phòng trên giao diện admin:
+
+```powershell
+node scripts/check-room-images-live.cjs
+```
 
 Đợt dịch vụ ngày 24/10/2026 đã triển khai API, migration và UI. Xem [phạm vi và cách thử](docs/PHASE_03_SERVICES.md). Kiểm tra toàn luồng dịch vụ bằng fixture cô lập trên preview:
 
@@ -213,4 +261,8 @@ Script kiểm tra đặt/hủy phòng và khôi phục phiên qua Android Keysto
 
 ## Tiếp theo
 
-Triển khai dịch vụ sử dụng, hóa đơn/thanh toán, check-out/dọn phòng và báo cáo doanh thu. Theo dõi kế hoạch đầy đủ tại `PLAN_DU_AN.md`.
+Đợt 31/10/2026 đã đối chiếu file đề cương Word; xem [bảng đối chiếu yêu cầu và phần còn thiếu](docs/DE_CUONG_GAP_REVIEW.md). Phần ước tính phân bổ giá phòng lúc đặt theo đêm trong kỳ, cộng dịch vụ theo ngày ghi và giá chốt; loại lịch/khoản đã hủy. Báo cáo có thêm **Đã thu trong kỳ** từ phiếu thu thật (`collected_total`, `cash_total`, `bank_total`, `payment_count`), tính theo ngày nhận tiền tại múi giờ khách sạn. Không lấy giá danh mục hiện tại để tính lại lịch sử.
+
+Kiểm tra riêng bộ lọc, hồ sơ dịch vụ và báo cáo bằng `flutter test test/catalog_reports_test.dart`, API bằng `pytest -q tests/test_catalog_reports.py` từ thư mục tương ứng. Kiểm tra Edge trên preview: `node scripts/check-catalog-revenue-preview.cjs` (đăng nhập thật; tạo/sửa/xóa một dịch vụ thử riêng, không thay đổi phòng hoặc booking).
+
+Luồng thu đủ tiền/chốt hóa đơn/trả phòng/dọn phòng đã có. Chưa có phụ thu/giảm giá/cọc/hoàn tiền/công nợ, quản lý tài khoản/loại phòng trên app và lịch sử công suất. **SQL Server đã được duyệt**, là công nghệ chính thức; các đoạn PostgreSQL trong đề cương gốc cần đổi trong thuyết minh. Theo dõi kế hoạch đầy đủ tại `PLAN_DU_AN.md`.

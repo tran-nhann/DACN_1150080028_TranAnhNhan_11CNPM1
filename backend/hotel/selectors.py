@@ -1,14 +1,14 @@
 from django.db.models import Exists, OuterRef, Prefetch
 from django.utils import timezone
 
-from .models import Booking, Room
+from .models import Booking, Room, RoomMove
 
 ACTIVE_BOOKING_STATUSES = [Booking.Status.CONFIRMED, Booking.Status.CHECKED_IN]
 
 
 def room_queryset():
     today = timezone.localdate()
-    return Room.objects.select_related("room_type").annotate(
+    return Room.objects.select_related("room_type").prefetch_related("images").annotate(
         _occupied=Exists(
             Booking.objects.filter(room_id=OuterRef("pk"), status=Booking.Status.CHECKED_IN)
         ),
@@ -41,6 +41,7 @@ def room_display_status(room):
 
 def booking_queryset():
     return Booking.objects.select_related("customer", "stay").prefetch_related(
+        Prefetch("room_moves", queryset=RoomMove.objects.select_related("created_by")), "service_plans", "stay__service_usages",
         Prefetch("room", queryset=room_queryset())
     )
 

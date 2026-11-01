@@ -7,11 +7,15 @@ import '../../core/detail_widgets.dart';
 import '../../core/models.dart';
 import '../bookings/booking_history.dart';
 import '../bookings/bookings_screen.dart';
-import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../shell/app_shell.dart';
+import 'room_form.dart';
+import 'room_card.dart';
+import 'room_filters.dart';
+import 'room_images.dart';
+import 'room_timeline_view.dart';
 
 class RoomsScreen extends ConsumerStatefulWidget {
   const RoomsScreen({
@@ -27,10 +31,12 @@ class RoomsScreen extends ConsumerStatefulWidget {
 }
 
 class _RoomsScreenState extends ConsumerState<RoomsScreen> {
+  bool _isTimeline = false;
   String _search = '';
   late String _condition = widget.initialStatus;
   late int? _floor = widget.initialFloor;
   int _page = 1;
+  int? _typeId;
   Timer? _debounce;
   final _searchController = TextEditingController();
   final _scroll = ScrollController();
@@ -43,6 +49,7 @@ class _RoomsScreenState extends ConsumerState<RoomsScreen> {
       _debounce?.cancel();
       _searchController.clear();
       _search = '';
+      _typeId = null;
       _floor = widget.initialFloor;
       _condition = widget.initialStatus;
       _page = 1;
@@ -60,18 +67,28 @@ class _RoomsScreenState extends ConsumerState<RoomsScreen> {
     super.dispose();
   }
 
-  RoomQuery get _query =>
-      (search: _search, condition: _condition, floor: _floor, page: _page);
+  RoomQuery get _query => (
+    search: _search,
+    condition: _condition,
+    floor: _floor,
+    roomType: _typeId,
+    page: _page,
+  );
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final data = ref.watch(roomsProvider(_query));
     final floors = ref.watch(dashboardProvider).value?.floors ?? [];
+    final types = ref.watch(roomTypesProvider);
     return PageBody(
       scrollController: _scroll,
       onRefresh: () async {
-        await ref.refresh(roomsProvider(_query).future).then((_) {});
+        if (_isTimeline) {
+          ref.invalidate(timelineProvider);
+        } else {
+          await ref.refresh(roomsProvider(_query).future).then((_) {});
+        }
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,252 +101,297 @@ class _RoomsScreenState extends ConsumerState<RoomsScreen> {
                     onPressed: () => showAsterSheet<void>(
                       context: context,
                       form: true,
-                      builder: (_) => const _RoomForm(),
+                      builder: (_) => const RoomForm(),
                     ),
                     icon: const Icon(Icons.add),
                   )
                 : null,
           ),
-          TextField(
-            controller: _searchController,
-            decoration: const InputDecoration(
-              hintText: 'Số phòng',
-              prefixIcon: Icon(Icons.search, size: 20),
+          // View Switcher (Sleek Capsule)
+          Container(
+            height: 38 * MediaQuery.textScalerOf(context).scale(1).clamp(1, 2),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AsterColors.border),
             ),
-            onChanged: (value) {
-              _debounce?.cancel();
-              _debounce = Timer(const Duration(milliseconds: 350), () {
-                if (mounted) {
-                  setState(() {
-                    _search = value.trim();
-                    _page = 1;
-                  });
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(3),
             child: Row(
               children: [
-                ...[
-                  ('', 'Tất cả'),
-                  ('ready', 'Sẵn sàng'),
-                  ('occupied', 'Đang ở'),
-                  ('reserved', 'Đã đặt'),
-                  ('cleaning', 'Cần dọn'),
-                  ('maintenance', 'Bảo trì'),
-                ].map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(
-                        item.$2,
-                        style: const TextStyle(fontSize: 11),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      if (_isTimeline) setState(() => _isTimeline = false);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: !_isTimeline
+                            ? AsterColors.navy
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: !_isTimeline
+                            ? [
+                                BoxShadow(
+                                  color: AsterColors.navy.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                            : null,
                       ),
-                      selected: _condition == item.$1,
-                      showCheckmark: false,
-                      selectedColor: const Color(0xFFDFF0E8),
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: AsterColors.border),
-                      onSelected: (_) => setState(() {
-                        _condition = item.$1;
-                        _page = 1;
-                      }),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.grid_view_rounded,
+                            size: 16,
+                            color: !_isTimeline
+                                ? Colors.white
+                                : AsterColors.muted,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Thẻ phòng',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: !_isTimeline
+                                    ? Colors.white
+                                    : AsterColors.ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                PopupMenuButton<int?>(
-                  tooltip: 'Lọc theo tầng',
-                  onSelected: (floor) => setState(() {
-                    _floor = floor == 0 ? null : floor;
-                    _page = 1;
-                  }),
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 0, child: Text('Tất cả tầng')),
-                    ...floors.map(
-                      (floor) => PopupMenuItem(
-                        value: floor.floor,
-                        child: Text('Tầng ${floor.floor}'),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      if (!_isTimeline) setState(() => _isTimeline = true);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: _isTimeline
+                            ? AsterColors.navy
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: _isTimeline
+                            ? [
+                                BoxShadow(
+                                  color: AsterColors.navy.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                            : null,
                       ),
-                    ),
-                  ],
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 48),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 13,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AsterColors.border),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.layers_outlined,
-                          size: 16,
-                          color: AsterColors.muted,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _floor == null ? 'Tất cả tầng' : 'Tầng $_floor',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        const Icon(Icons.expand_more, size: 16),
-                      ],
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.calendar_view_week_rounded,
+                            size: 16,
+                            color: _isTimeline
+                                ? Colors.white
+                                : AsterColors.muted,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Sơ đồ lịch',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: _isTimeline
+                                    ? Colors.white
+                                    : AsterColors.ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          AsyncContent(
-            value: data,
-            onRetry: () => ref.invalidate(roomsProvider(_query)),
-            builder: (result) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${result.count} phòng',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w700,
+          if (_isTimeline)
+            RoomTimelineView(
+              floor: _floor,
+              floors: floors,
+              onFloorChanged: (f) => setState(() => _floor = f),
+            )
+          else ...[
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Số phòng',
+                prefixIcon: Icon(Icons.search, size: 20),
+              ),
+              onChanged: (value) {
+                _debounce?.cancel();
+                _debounce = Timer(const Duration(milliseconds: 350), () {
+                  if (mounted) {
+                    setState(() {
+                      _search = value.trim();
+                      _page = 1;
+                    });
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            RoomFilters(
+              types: types.value ?? [],
+              typesLoading: types.isLoading || types.hasError,
+              floors: floors.map((item) => item.floor).toList(),
+              status: _condition,
+              floor: _floor,
+              typeId: _typeId,
+              onType: (value) => setState(() {
+                _typeId = value;
+                _page = 1;
+              }),
+              onFloor: (value) => setState(() {
+                _floor = value;
+                _page = 1;
+              }),
+              onStatus: (value) => setState(() {
+                _condition = value;
+                _page = 1;
+              }),
+              onClear: () => setState(() {
+                _typeId = null;
+                _floor = null;
+                _condition = '';
+                _page = 1;
+              }),
+            ),
+            if (types.hasError)
+              TextButton.icon(
+                onPressed: () => ref.invalidate(roomTypesProvider),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Không tải được hạng phòng · Thử lại'),
+              ),
+            const SizedBox(height: 22),
+            AsyncContent(
+              value: data,
+              onRetry: () => ref.invalidate(roomsProvider(_query)),
+              builder: (result) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${result.count} phòng',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                if (result.items.isEmpty)
-                  const EmptyState(
-                    icon: Icons.bed_outlined,
-                    title: 'Không tìm thấy phòng',
-                    message: '',
-                  )
-                else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final columns =
-                          MediaQuery.textScalerOf(context).scale(1) > 1.4
-                          ? 1
-                          : constraints.maxWidth >= 1000
-                          ? 4
-                          : constraints.maxWidth >= 650
-                          ? 3
-                          : 2;
-                      final width =
-                          (constraints.maxWidth - (columns - 1) * 12) / columns;
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: result.items
-                            .map(
-                              (room) => SizedBox(
-                                width: width,
-                                child: _RoomCard(
-                                  room: room,
-                                  onTap: () => showAsterSheet<void>(
-                                    context: context,
-                                    builder: (_) => RoomDetail(room: room),
+                  const SizedBox(height: 14),
+                  if (result.items.isEmpty)
+                    const EmptyState(
+                      icon: Icons.bed_outlined,
+                      title: 'Không tìm thấy phòng',
+                      message: '',
+                    )
+                  else
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columns =
+                            MediaQuery.textScalerOf(context).scale(1) > 1.4
+                            ? 1
+                            : constraints.maxWidth >= 1000
+                            ? 4
+                            : constraints.maxWidth >= 650
+                            ? 3
+                            : 2;
+                        final width =
+                            (constraints.maxWidth - (columns - 1) * 12) /
+                            columns;
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: result.items
+                              .map(
+                                (room) => SizedBox(
+                                  width: width,
+                                  child: RoomCard(
+                                    room: room,
+                                    onTap: () => showAsterSheet<void>(
+                                      context: context,
+                                      builder: (_) => RoomDetail(room: room),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                      );
-                    },
+                              )
+                              .toList(),
+                        );
+                      },
+                    ),
+                  Pager(
+                    page: _page,
+                    hasNext: result.hasNext,
+                    onPage: (page) => setState(() => _page = page),
                   ),
-                Pager(
-                  page: _page,
-                  hasNext: result.hasNext,
-                  onPage: (page) => setState(() => _page = page),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _RoomCard extends StatelessWidget {
-  const _RoomCard({required this.room, required this.onTap});
-  final HotelRoom room;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    room.number,
-                    style: const TextStyle(
-                      fontSize: 27,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -.7,
-                      color: AsterColors.ink,
-                    ),
-                  ),
-                ),
-                const Icon(
-                  Icons.bed_outlined,
-                  color: AsterColors.muted,
-                  size: 23,
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              room.type.name,
-              style: const TextStyle(fontSize: 11, color: AsterColors.muted),
-            ),
-            const SizedBox(height: 14),
-            ConditionBadge(room.displayStatus),
-            const SizedBox(height: 13),
-            Text(
-              money(room.type.rate),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: AsterColors.ink,
-              ),
-            ),
-            const Text('/ đêm', style: TextStyle(fontSize: 9)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(
-                  Icons.person_outline,
-                  size: 13,
-                  color: AsterColors.muted,
-                ),
-                const SizedBox(width: 3),
-                Expanded(
-                  child: Text(
-                    '${room.type.capacity} khách · Tầng ${room.floor}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+IconData _amenityIcon(String name) {
+  final lower = name.toLowerCase();
+  if (lower.contains('wifi') || lower.contains('mạng')) {
+    return Icons.wifi_rounded;
+  }
+  if (lower.contains('điều hòa') ||
+      lower.contains('máy lạnh') ||
+      lower.contains('ac')) {
+    return Icons.ac_unit_rounded;
+  }
+  if (lower.contains('tv') || lower.contains('tivi')) return Icons.tv_rounded;
+  if (lower.contains('bồn tắm') ||
+      lower.contains('tắm') ||
+      lower.contains('jacuzzi')) {
+    return Icons.bathtub_outlined;
+  }
+  if (lower.contains('ban công') || lower.contains('view')) {
+    return Icons.balcony_rounded;
+  }
+  if (lower.contains('minibar') || lower.contains('tủ lạnh')) {
+    return Icons.kitchen_outlined;
+  }
+  if (lower.contains('máy sấy')) return Icons.air_rounded;
+  if (lower.contains('bàn')) return Icons.desk_rounded;
+  if (lower.contains('áo choàng')) return Icons.dry_cleaning_outlined;
+  if (lower.contains('cà phê') || lower.contains('trà')) {
+    return Icons.coffee_rounded;
+  }
+  return Icons.check_circle_outline_rounded;
 }
 
 class RoomDetail extends ConsumerStatefulWidget {
@@ -341,14 +403,58 @@ class RoomDetail extends ConsumerStatefulWidget {
 
 class RoomDetailState extends ConsumerState<RoomDetail> {
   HotelBooking? _selected;
+  late HotelRoom _room = widget.room;
+  bool _editing = false;
+  int _editVersion = 0;
   void _back() {
-    setState(() => _selected = null);
+    setState(() {
+      _selected = null;
+      _editing = false;
+    });
     setSheetHeight(context, .85);
   }
 
   late String _condition = widget.room.condition;
   bool _busy = false;
   String? _error;
+  Future<void> _confirmCleaned() async {
+    if (_busy || _room.updatedAt == null) return;
+    final confirmed = await showAsterConfirm(
+      context,
+      title: 'Xác nhận đã dọn?',
+      details:
+          'Phòng ${_room.number} đã được dọn và kiểm tra, sẵn sàng nhận khách.',
+      label: 'Xác nhận đã dọn',
+    );
+    if (confirmed != true || !mounted || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    setSheetBusy(context, true);
+    try {
+      final updated = await ref
+          .read(apiProvider)
+          .confirmCleaned(_room.id, _room.updatedAt!);
+      if (!mounted) return;
+      refreshRooms(ref);
+      setSheetBusy(context, false);
+      setState(() {
+        _room = updated;
+        _condition = updated.condition;
+        _busy = false;
+      });
+      showMessage(context, 'Đã xác nhận dọn phòng');
+    } catch (error) {
+      if (!mounted) return;
+      setSheetBusy(context, false);
+      setState(() {
+        _busy = false;
+        _error = error.toString();
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (_busy) return;
     setState(() {
@@ -357,7 +463,7 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
     });
     setSheetBusy(context, true);
     try {
-      await ref.read(apiProvider).changeCondition(widget.room.id, _condition);
+      await ref.read(apiProvider).changeCondition(_room.id, _condition);
       if (!mounted) return;
       refreshRooms(ref);
       setSheetBusy(context, false);
@@ -377,11 +483,15 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
   @override
   Widget build(BuildContext context) {
     final canEdit = ref.watch(authProvider).user?.canEditRooms ?? false;
-    final room = widget.room;
+    final room = _room;
+    final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
     return PopScope(
-      canPop: !_busy && _selected == null,
+      canPop: !_busy && _selected == null && !_editing,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _editing && !sheetIsBusy(context)) _back();
+      },
       child: SheetPages(
-        index: _selected == null ? 0 : 1,
+        index: _selected == null && !_editing ? 0 : 1,
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(
@@ -403,6 +513,17 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                       ),
+                      if (isAdmin)
+                        IconButton(
+                          tooltip: 'Sửa phòng',
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  setState(() => _editing = true);
+                                  setSheetHeight(context, .94);
+                                },
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
                       IconButton(
                         tooltip: 'Đóng',
                         onPressed: _busy ? null : () => Navigator.pop(context),
@@ -421,6 +542,25 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
                       ConditionBadge(room.displayStatus),
                       if (!room.active) const Chip(label: Text('Ngừng bán')),
                     ],
+                  ),
+                  const SizedBox(height: 18),
+                  if (canEdit && room.condition == 'cleaning') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        key: const Key('room_confirm_cleaned'),
+                        onPressed: _busy || room.updatedAt == null
+                            ? null
+                            : _confirmCleaned,
+                        icon: const Icon(Icons.cleaning_services_outlined),
+                        label: const Text('Xác nhận đã dọn'),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
+                  RoomGallery(
+                    key: ValueKey(room.images.map((e) => e.id).join(',')),
+                    images: room.images,
                   ),
                   const SizedBox(height: 18),
                   Surface(
@@ -451,10 +591,111 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  if (room.type.description.isNotEmpty || room.notes.isNotEmpty)
-                    ExpandableDetails(
-                      description: room.type.description,
-                      notes: room.notes,
+                  DetailSection(
+                    title: 'Thông tin phòng',
+                    icon: Icons.bed_outlined,
+                    children: [
+                      DetailField(
+                        inline: true,
+                        label: 'Loại phòng',
+                        value: room.type.name,
+                      ),
+                      DetailField(
+                        inline: true,
+                        label: 'Sức chứa',
+                        value: '${room.type.capacity} khách',
+                      ),
+                      DetailField(
+                        inline: true,
+                        label: 'Diện tích',
+                        value: room.area == null
+                            ? 'Chưa cập nhật'
+                            : '${room.area!.toStringAsFixed(2).replaceFirst(RegExp(r"\.?0+$"), "")} m²',
+                      ),
+                      DetailField(
+                        inline: true,
+                        label: 'Loại giường',
+                        value: roomBedTypes[room.bedType] ?? 'Chưa cập nhật',
+                      ),
+                      DetailField(
+                        inline: true,
+                        label: 'Số giường',
+                        value: room.bedCount?.toString() ?? 'Chưa cập nhật',
+                      ),
+                      DetailField(
+                        inline: true,
+                        label: 'Hướng nhìn',
+                        value: room.view.isEmpty ? 'Chưa cập nhật' : room.view,
+                      ),
+                    ],
+                  ),
+                  DetailSection(
+                    title: 'Mô tả',
+                    icon: Icons.notes_rounded,
+                    children: [
+                      Text(
+                        room.description.isNotEmpty
+                            ? room.description
+                            : room.type.description.isNotEmpty
+                            ? room.type.description
+                            : 'Chưa cập nhật mô tả phòng.',
+                      ),
+                    ],
+                  ),
+                  DetailSection(
+                    title: 'Tiện nghi phòng',
+                    icon: Icons.room_service_outlined,
+                    children: [
+                      if (room.amenities.isEmpty)
+                        const Text('Chưa cập nhật tiện nghi.')
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: room.amenities
+                              .map(
+                                (item) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AsterColors.border,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _amenityIcon(item),
+                                        size: 14,
+                                        color: AsterColors.navy,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        item,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AsterColors.ink,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                    ],
+                  ),
+                  if (room.notes.isNotEmpty)
+                    DetailSection(
+                      title: 'Ghi chú nội bộ',
+                      icon: Icons.notes_outlined,
+                      children: [Text(room.notes)],
                     ),
                   const SizedBox(height: 26),
                   Text(
@@ -501,8 +742,17 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
                     ),
                   ],
                   const SizedBox(height: 20),
+                  if (room.createdAt != null) ...[
+                    DetailField(
+                      inline: true,
+                      label: 'Ngày tạo',
+                      value: dateStamp(room.createdAt!),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (room.updatedAt != null)
                     DetailField(
+                      inline: true,
                       label: 'Cập nhật',
                       value: dateStamp(room.updatedAt!),
                     ),
@@ -516,211 +766,37 @@ class RoomDetailState extends ConsumerState<RoomDetail> {
               ),
             ),
           ),
-          if (_selected != null)
-            BookingDetail(booking: _selected!, onBack: _back)
+          if (_editing)
+            RoomForm(
+              key: ValueKey(_editVersion),
+              room: room,
+              onBack: _back,
+              onSaved: (saved) {
+                setState(() {
+                  _room = saved;
+                  _condition = saved.condition;
+                  _editing = false;
+                  _editVersion++;
+                });
+                setSheetHeight(context, .85);
+              },
+            )
+          else if (_selected != null)
+            BookingDetail(
+              booking: _selected!,
+              onBack: _back,
+              onUpdated: (updated) {
+                setState(() {
+                  _selected = updated;
+                  _room = updated.room;
+                  _condition = updated.room.condition;
+                });
+              },
+            )
           else
             const SizedBox.shrink(),
         ],
       ),
     );
   }
-}
-
-class _RoomForm extends ConsumerStatefulWidget {
-  const _RoomForm();
-  @override
-  ConsumerState<_RoomForm> createState() => _RoomFormState();
-}
-
-class _RoomFormState extends ConsumerState<_RoomForm> {
-  final _form = GlobalKey<FormState>();
-  final _number = TextEditingController(),
-      _floor = TextEditingController(text: '1');
-  int? _type;
-  bool _busy = false;
-  String? _error;
-  Map<String, String> _fields = {};
-  @override
-  void dispose() {
-    _number.dispose();
-    _floor.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (_busy || !validateAndReveal(context, _form)) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-      _fields = {};
-    });
-    setSheetBusy(context, true);
-    try {
-      await ref.read(apiProvider).saveRoom({
-        'number': _number.text.trim(),
-        'floor': int.parse(_floor.text.trim()),
-        'room_type_id': _type,
-      });
-      if (!mounted) return;
-      refreshRooms(ref);
-      setSheetBusy(context, false);
-      showMessage(context, 'Đã thêm phòng');
-      Navigator.pop(context);
-    } catch (error) {
-      if (mounted) {
-        setSheetBusy(context, false);
-        setState(() {
-          _busy = false;
-          _error = error.toString();
-          _fields = error is ApiFailure ? error.fields : {};
-        });
-        final field = switch ([
-          'number',
-          'floor',
-          'room_type_id',
-        ].where(_fields.containsKey).firstOrNull) {
-          'number' => 'room_number',
-          'floor' => 'room_floor',
-          'room_type_id' => 'room_type',
-          _ => 'room_error',
-        };
-        revealField(context, Key(field));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_busy,
-    child: Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        24 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ScreenHeading(
-              title: 'Thêm phòng',
-              action: IconButton(
-                tooltip: 'Đóng',
-                onPressed: _busy ? null : () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-              ),
-            ),
-            AsyncContent(
-              value: ref.watch(roomTypesProvider),
-              onRetry: () => ref.invalidate(roomTypesProvider),
-              builder: (types) => Form(
-                key: _form,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      key: const Key('room_number'),
-                      controller: _number,
-                      enabled: !_busy,
-                      onChanged: (_) => setState(() {
-                        _error = null;
-                        _fields.remove('number');
-                      }),
-                      decoration: InputDecoration(
-                        labelText: 'Số phòng',
-                        errorText: _fields['number'],
-                      ),
-                      validator: (value) =>
-                          value == null ||
-                              !RegExp(r'^[A-Za-z0-9-]{1,10}$')
-                                  .hasMatch(value.trim())
-                          ? 'Dùng 1–10 chữ, số hoặc dấu gạch ngang.'
-                          : null,
-                    ),
-                    const SizedBox(height: 18),
-                    TextFormField(
-                      key: const Key('room_floor'),
-                      controller: _floor,
-                      enabled: !_busy,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {
-                        _error = null;
-                        _fields.remove('floor');
-                      }),
-                      decoration: InputDecoration(
-                        labelText: 'Tầng',
-                        errorText: _fields['floor'],
-                      ),
-                      validator: (value) {
-                        final floor = int.tryParse(value?.trim() ?? '');
-                        return floor == null || floor < 1 || floor > 32767
-                            ? 'Nhập tầng hợp lệ.'
-                            : null;
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    DropdownButtonFormField<int>(
-                      key: const Key('room_type'),
-                      isExpanded: true,
-                      initialValue: _type,
-                      decoration: InputDecoration(
-                        labelText: 'Loại phòng',
-                        errorText: _fields['room_type_id'],
-                      ),
-                      items: types
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type.id,
-                              child: Text(
-                                '${type.name} · ${money(type.rate)}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _busy
-                          ? null
-                          : (value) => setState(() {
-                              _type = value;
-                              _error = null;
-                              _fields.remove('room_type_id');
-                            }),
-                      validator: (value) =>
-                          value == null ? 'Vui lòng chọn loại phòng.' : null,
-                    ),
-                    if (_error != null &&
-                        (_fields.isEmpty ||
-                            _fields.keys.any(
-                              (field) => ![
-                                'number',
-                                'floor',
-                                'room_type_id',
-                              ].contains(field),
-                            ))) ...[
-                      const SizedBox(height: 16),
-                      InlineError(_error!, key: const Key('room_error')),
-                    ],
-                    const SizedBox(height: 26),
-                    SizedBox(
-                      width: double.infinity,
-                      child: PressScale(
-                        child: FilledButton(
-                          key: const Key('room_save'),
-                          onPressed: _busy ? null : _save,
-                          child: _busy
-                              ? const AsterLoader(size: 24)
-                              : const Text('Thêm'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }

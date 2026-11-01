@@ -1,0 +1,10 @@
+{
+  "source": "AI-generated sample interiors for development. These are not photographs of a real hotel.",
+  "generator": "Built-in image_gen",
+  "types": {
+    "superior": ["superior-bedroom.jpg", "superior-interior.jpg", "superior-bathroom.jpg"],
+    "deluxe": ["deluxe-bedroom.jpg", "deluxe-interior.jpg", "deluxe-bathroom.jpg"],
+    "premier": ["premier-bedroom.jpg", "premier-interior.jpg", "premier-bathroom.jpg"],
+    "suite": ["suite-bedroom.jpg", "suite-interior.jpg", "suite-bathroom.jpg"]
+  }
+}

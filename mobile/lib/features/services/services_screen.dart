@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api.dart';
+import '../../core/form_layout.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../shell/app_shell.dart';
+import 'service_detail.dart';
+import 'apply_service.dart';
 
 class ServicesScreen extends ConsumerStatefulWidget {
   const ServicesScreen({super.key});
@@ -47,7 +51,26 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
                   )
                 : null,
           ),
-          ServiceCatalog(key: _catalog, onSelected: admin ? _edit : null),
+          ServiceCatalog(
+            key: _catalog,
+            onApply: ref.watch(authProvider).user?.canEditRooms == true
+                ? (service) => showAsterSheet<void>(
+                    context: context,
+                    form: true,
+                    builder: (context) => ApplyServicePanel(
+                      service: service,
+                      onBack: () => Navigator.pop(context),
+                    ),
+                  )
+                : null,
+            onSelected: (service) => showAsterSheet<void>(
+              context: context,
+              builder: (_) => ServiceDetail(
+                service: service,
+                onSaved: (saved) => _catalog.currentState?.reveal(saved),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -61,8 +84,10 @@ class ServiceCatalog extends ConsumerStatefulWidget {
     this.activeOnly = false,
     this.selectedId,
     this.enabled = true,
+    this.onApply,
   });
   final ValueChanged<HotelService>? onSelected;
+  final ValueChanged<HotelService>? onApply;
   final bool activeOnly, enabled;
   final int? selectedId;
   @override
@@ -181,73 +206,127 @@ class _ServiceCatalogState extends ConsumerState<ServiceCatalog> {
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(18),
                       clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        key: Key('service_${service.id}'),
-                        onTap:
-                            widget.enabled &&
-                                widget.onSelected != null &&
-                                (!widget.activeOnly || service.unitValid)
-                            ? () => widget.onSelected!(service)
-                            : null,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          InkWell(
+                            key: Key('service_${service.id}'),
+                            onTap:
+                                widget.enabled &&
+                                    widget.onSelected != null &&
+                                    (!widget.activeOnly || service.unitValid)
+                                ? () => widget.onSelected!(service)
+                                : null,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      service.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        color: AsterColors.ink,
+                                  Row(
+                                    children: [
+                                      ServiceThumbnail(
+                                        service: service,
+                                        size: 44,
                                       ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              service.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                color: AsterColors.ink,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              serviceCategories[service
+                                                      .category] ??
+                                                  'Khác',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AsterColors.muted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (widget.onSelected != null)
+                                        Icon(
+                                          widget.selectedId == service.id
+                                              ? Icons.check_circle
+                                              : Icons.chevron_right,
+                                          color: AsterColors.teal,
+                                          size: 20,
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${money(service.price)} / ${service.unitValid ? service.unit : '—'}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: AsterColors.teal,
                                     ),
                                   ),
-                                  if (widget.onSelected != null)
-                                    Icon(
-                                      widget.selectedId == service.id
-                                          ? Icons.check_circle
-                                          : Icons.chevron_right,
-                                      color: AsterColors.teal,
-                                      size: 20,
+                                  if (!service.unitValid)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        'Cần chọn đơn vị',
+                                        style: TextStyle(
+                                          color: AsterColors.amber,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  if (!service.active)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        'Ngừng bán',
+                                        style: TextStyle(
+                                          color: AsterColors.muted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${money(service.price)} / ${service.unitValid ? service.unit : '—'}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AsterColors.teal,
+                            ),
+                          ),
+                          if (widget.onApply != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Tooltip(
+                                  message: !service.unitValid
+                                      ? 'Admin cần sửa và chọn đơn vị trước.'
+                                      : !service.active
+                                      ? 'Dịch vụ đã ngừng bán.'
+                                      : 'Ghi dịch vụ cho một phòng đang ở',
+                                  child: OutlinedButton.icon(
+                                    key: Key('apply_service_${service.id}'),
+                                    onPressed:
+                                        widget.enabled &&
+                                            service.active &&
+                                            service.unitValid
+                                        ? () => widget.onApply!(service)
+                                        : null,
+                                    icon: const Icon(
+                                      Icons.add_shopping_cart_outlined,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Áp dụng'),
+                                  ),
                                 ),
                               ),
-                              if (!service.unitValid)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    'Cần chọn đơn vị',
-                                    style: TextStyle(
-                                      color: AsterColors.amber,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              if (!service.active)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    'Ngừng bán',
-                                    style: TextStyle(
-                                      color: AsterColors.muted,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -271,9 +350,10 @@ class _ServiceCatalogState extends ConsumerState<ServiceCatalog> {
 }
 
 class ServiceForm extends ConsumerStatefulWidget {
-  const ServiceForm({super.key, this.service, this.onSaved});
+  const ServiceForm({super.key, this.service, this.onSaved, this.onBack});
   final ValueChanged<HotelService>? onSaved;
   final HotelService? service;
+  final VoidCallback? onBack;
   @override
   ConsumerState<ServiceForm> createState() => _ServiceFormState();
 }
@@ -282,6 +362,13 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.service?.name);
   late String? _unit = widget.service?.unit;
+  late String _category = widget.service?.category ?? 'other';
+  late final _description = TextEditingController(
+    text: widget.service?.description,
+  );
+  late final _notes = TextEditingController(text: widget.service?.notes);
+  Uint8List? _image;
+  bool _removeImage = false, _picking = false;
   late final _price = TextEditingController(
     text: widget.service?.price.toString(),
   );
@@ -293,6 +380,8 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
   void dispose() {
     _name.dispose();
     _price.dispose();
+    _description.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -300,8 +389,38 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
     _error = null;
     _fields.remove(field);
   });
+  Future<void> _pickImage() async {
+    if (_busy || _picking) return;
+    setState(() => _picking = true);
+    setSheetBusy(context, true);
+    try {
+      final selected = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+      );
+      if (selected == null) return;
+      if (await selected.length() > 5 * 1024 * 1024) {
+        throw const ApiFailure('Ảnh tối đa 5 MB.');
+      }
+      final bytes = await selected.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _image = bytes;
+          _removeImage = false;
+          _error = null;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) {
+        setSheetBusy(context, false);
+        setState(() => _picking = false);
+      }
+    }
+  }
+
   Future<void> _save() async {
-    if (_busy || !validateAndReveal(context, _form)) return;
+    if (_busy || _picking || !validateAndReveal(context, _form)) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -309,19 +428,29 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
     });
     setSheetBusy(context, true);
     try {
-      final saved = await ref.read(apiProvider).saveService({
-        'name': _name.text.trim(),
-        'unit': _unit,
-        'unit_price': _price.text,
-        'is_active': _active,
-      }, id: widget.service?.id);
+      final saved = await ref
+          .read(apiProvider)
+          .saveService(
+            {
+              'name': _name.text.trim(),
+              'unit': _unit,
+              'unit_price': _price.text,
+              'is_active': _active,
+              'category': _category,
+              'description': _description.text.trim(),
+              'notes': _notes.text.trim(),
+              'remove_image': _removeImage,
+            },
+            id: widget.service?.id,
+            image: _image,
+          );
       if (!mounted) return;
       ref.invalidate(servicesProvider);
       setSheetBusy(context, false);
       setState(() => _busy = false);
       widget.onSaved?.call(saved);
       showMessage(context, 'Đã lưu');
-      Navigator.pop(context);
+      if (widget.onBack == null) Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
       setSheetBusy(context, false);
@@ -432,22 +561,25 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !_busy,
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
+    canPop: !_busy && !_picking,
+    child: PinnedFormLayout(
+      header: ScreenHeading(
+        title: widget.service == null ? 'Thêm dịch vụ' : 'Sửa dịch vụ',
+        action: IconButton(
+          tooltip: widget.onBack == null ? 'Đóng' : 'Quay lại',
+          onPressed: _busy || _picking
+              ? null
+              : widget.onBack ?? () => Navigator.pop(context),
+          icon: Icon(
+            widget.onBack == null ? Icons.close : Icons.arrow_back_rounded,
+          ),
+        ),
+      ),
+      body: Form(
         key: _form,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ScreenHeading(
-              title: widget.service == null ? 'Thêm dịch vụ' : 'Sửa dịch vụ',
-              action: IconButton(
-                tooltip: 'Đóng',
-                onPressed: _busy ? null : () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-              ),
-            ),
             TextFormField(
               key: const Key('catalog_name'),
               controller: _name,
@@ -462,6 +594,27 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'Nhập tên dịch vụ.'
                   : null,
+            ),
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              key: const Key('catalog_category'),
+              initialValue: _category,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: 'Nhóm dịch vụ',
+                errorText: _fields['category'],
+              ),
+              items: serviceCategories.entries
+                  .map(
+                    (entry) => DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _category = value ?? 'other'),
             ),
             const SizedBox(height: 14),
             _unitField(),
@@ -485,6 +638,67 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
                   int.tryParse(value ?? '') == null ? 'Nhập đơn giá.' : null,
             ),
             const SizedBox(height: 12),
+            if (_image != null ||
+                (!_removeImage && widget.service?.imageUrl != null)) ...[
+              Center(
+                child: _image != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.memory(
+                          _image!,
+                          height: 130,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, error, stack) =>
+                              const Icon(Icons.broken_image_outlined, size: 48),
+                        ),
+                      )
+                    : ServiceThumbnail(service: widget.service!, size: 130),
+              ),
+              TextButton.icon(
+                onPressed: _busy || _picking
+                    ? null
+                    : () => setState(() {
+                        _image = null;
+                        _removeImage = true;
+                      }),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Bỏ ảnh'),
+              ),
+            ],
+            OutlinedButton.icon(
+              onPressed: _busy || _picking ? null : _pickImage,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: Text(_picking ? 'Đang chọn ảnh…' : 'Chọn ảnh dịch vụ'),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              key: const Key('catalog_description'),
+              controller: _description,
+              enabled: !_busy,
+              minLines: 3,
+              maxLines: 5,
+              maxLength: 2000,
+              decoration: InputDecoration(
+                labelText: 'Mô tả dịch vụ',
+                errorText: _fields['description'],
+              ),
+              onChanged: (_) => _change('description'),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              key: const Key('catalog_notes'),
+              controller: _notes,
+              enabled: !_busy,
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 300,
+              decoration: InputDecoration(
+                labelText: 'Ghi chú nội bộ',
+                errorText: _fields['notes'],
+              ),
+              onChanged: (_) => _change('notes'),
+            ),
+            const SizedBox(height: 12),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('Đang bán'),
@@ -501,19 +715,20 @@ class _ServiceFormState extends ConsumerState<ServiceForm> {
                     )))
               InlineError(_error!, key: const Key('service_error')),
             const SizedBox(height: 16),
-            PressScale(
-              child: FilledButton(
-                key: const Key('catalog_save'),
-                onPressed:
-                    _busy ||
-                        !ref.watch(serviceUnitsProvider).hasValue ||
-                        ref.watch(serviceUnitsProvider).hasError
-                    ? null
-                    : _save,
-                child: _busy ? const AsterLoader(size: 24) : const Text('Lưu'),
-              ),
-            ),
           ],
+        ),
+      ),
+      footer: PressScale(
+        child: FilledButton(
+          key: const Key('catalog_save'),
+          onPressed:
+              _busy ||
+                  _picking ||
+                  !ref.watch(serviceUnitsProvider).hasValue ||
+                  ref.watch(serviceUnitsProvider).hasError
+              ? null
+              : _save,
+          child: _busy ? const AsterLoader(size: 24) : const Text('Lưu'),
         ),
       ),
     ),

@@ -235,6 +235,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/Booking'
           description: ''
+  /api/v1/bookings/{id}/check-out/:
+    post:
+      operationId: bookings_check_out_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Checkout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Checkout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Checkout'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+          description: ''
   /api/v1/bookings/{id}/extend/:
     post:
       operationId: bookings_extend_create
@@ -267,6 +310,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/v1/bookings/{id}/folio/:
+    get:
+      operationId: bookings_folio_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolioResponse'
+          description: ''
+  /api/v1/bookings/{id}/planned-services/:
+    post:
+      operationId: bookings_planned_services_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddService'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddService'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddService'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingServicePlan'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingServicePlan'
+          description: ''
+  /api/v1/bookings/{id}/planned-services/{plan_id}/cancel/:
+    post:
+      operationId: bookings_planned_services_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelService'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelService'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelService'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingServicePlan'
           description: ''
   /api/v1/bookings/{id}/reschedule/:
     post:
@@ -399,6 +542,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServiceUsage'
+          description: ''
+  /api/v1/bookings/{id}/transfer/:
+    post:
+      operationId: bookings_transfer_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this booking.
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomMoveCommit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoomMoveCommit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoomMoveCommit'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomMoveResponse'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomMoveResponse'
+          description: ''
+  /api/v1/bookings/{id}/transfer-options/:
+    get:
+      operationId: bookings_transfer_options_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this booking.
+        required: true
+      tags:
+      - bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomMoveOptions'
+          description: ''
+  /api/v1/bookings/{id}/transfer-quote/:
+    post:
+      operationId: bookings_transfer_quote_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this booking.
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomMoveInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoomMoveInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoomMoveInput'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomMoveQuote'
           description: ''
   /api/v1/customers/:
     get:
@@ -572,6 +813,77 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/invoices/:
+    get:
+      operationId: invoices_list
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+        description: Ngày thu tiền đến, không gồm ngày này.
+      - in: query
+        name: method
+        schema:
+          type: string
+          enum:
+          - bank_transfer
+          - cash
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: start_date
+        schema:
+          type: string
+        description: Ngày thu tiền từ, gồm ngày này.
+      tags:
+      - invoices
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInvoiceList'
+          description: ''
+  /api/v1/invoices/{id}/:
+    get:
+      operationId: invoices_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
   /api/v1/me/:
     get:
       operationId: me_retrieve
@@ -585,6 +897,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/reports/revenue-estimate/:
+    get:
+      operationId: reports_revenue_estimate_retrieve
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: Ngày kết thúc không bao gồm trong kỳ.
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueEstimate'
           description: ''
   /api/v1/room-types/:
     get:
@@ -732,6 +1072,11 @@ paths:
     get:
       operationId: rooms_list
       parameters:
+      - in: query
+        name: floor
+        schema:
+          type: integer
+        description: Tầng phòng (số nguyên dương).
       - name: ordering
         required: false
         in: query
@@ -744,12 +1089,27 @@ paths:
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - in: query
+        name: room_type
+        schema:
+          type: integer
+        description: ID hạng phòng; kết hợp với tầng và trạng thái.
       - name: search
         required: false
         in: query
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cleaning
+          - maintenance
+          - occupied
+          - ready
+          - reserved
       tags:
       - rooms
       security:
@@ -770,13 +1130,24 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Room'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Room'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Room'
-        required: true
+              type: object
+              required:
+              - data
+              properties:
+                data:
+                  type: string
+                  description: JSON room fields; image_ids retains/reorders existing
+                    images. cover_upload_index selects a new upload as cover (zero-based).
+                upload_images:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: string
+                    format: binary
+                  description: JPG, PNG or WebP, at most 5 MB and 25 megapixels per
+                    image.
       security:
       - jwtAuth: []
       responses:
@@ -823,13 +1194,24 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Room'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Room'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Room'
-        required: true
+              type: object
+              required:
+              - data
+              properties:
+                data:
+                  type: string
+                  description: JSON room fields; image_ids retains/reorders existing
+                    images. cover_upload_index selects a new upload as cover (zero-based).
+                upload_images:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: string
+                    format: binary
+                  description: JPG, PNG or WebP, at most 5 MB and 25 megapixels per
+                    image.
       security:
       - jwtAuth: []
       responses:
@@ -855,12 +1237,24 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PatchedRoom'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedRoom'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedRoom'
+              type: object
+              required:
+              - data
+              properties:
+                data:
+                  type: string
+                  description: JSON room fields; image_ids retains/reorders existing
+                    images. cover_upload_index selects a new upload as cover (zero-based).
+                upload_images:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: string
+                    format: binary
+                  description: JPG, PNG or WebP, at most 5 MB and 25 megapixels per
+                    image.
       security:
       - jwtAuth: []
       responses:
@@ -903,9 +1297,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/Room'
           description: ''
+  /api/v1/rooms/{id}/confirm-cleaned/:
+    post:
+      operationId: rooms_confirm_cleaned_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this room.
+        required: true
+      tags:
+      - rooms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CleanRoom'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CleanRoom'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CleanRoom'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+          description: ''
   /api/v1/rooms/availability/:
     get:
-      operationId: rooms_availability_list
+      operationId: rooms_availability_retrieve
+      tags:
+      - rooms
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+          description: ''
+  /api/v1/rooms/timeline/:
+    get:
+      operationId: rooms_timeline_list
       parameters:
       - in: query
         name: end_date
@@ -1266,6 +1707,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/ServiceItem'
           description: ''
+    delete:
+      operationId: services_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this service item.
+        required: true
+      tags:
+      - services
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     ActiveUserRefresh:
@@ -1299,6 +1756,25 @@ components:
       - expected_unit_price
       - quantity
       - service_id
+    BedTypeEnum:
+      enum:
+      - single
+      - double
+      - queen
+      - king
+      - twin
+      - mixed
+      type: string
+      description: |-
+        * `single` - Giường đơn
+        * `double` - Giường đôi
+        * `queen` - Giường Queen
+        * `king` - Giường King
+        * `twin` - Hai giường đơn
+        * `mixed` - Kết hợp nhiều loại giường
+    BlankEnum:
+      enum:
+      - ''
     Booking:
       type: object
       properties:
@@ -1337,12 +1813,21 @@ components:
           format: decimal
           pattern: ^-?\d{0,15}(?:\.\d{0,0})?$
           readOnly: true
+        planned_service_total:
+          type: string
+          readOnly: true
+        service_total:
+          type: string
+          readOnly: true
+        estimated_total:
+          type: string
+          readOnly: true
         nights:
           type: integer
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/BookingStatusEnum'
+          - $ref: '#/components/schemas/StatusEnum'
           readOnly: true
         status_label:
           type: string
@@ -1352,22 +1837,47 @@ components:
           format: date-time
           nullable: true
           readOnly: true
+        check_in_record_recovered:
+          type: boolean
+          readOnly: true
+        checked_out_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        room_segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomSegment'
+          readOnly: true
+        room_moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomMoveHistory'
+          readOnly: true
         created_at:
           type: string
           format: date-time
           readOnly: true
       required:
+      - check_in_record_recovered
       - checked_in_at
+      - checked_out_at
       - code
       - created_at
       - customer
       - end_date
+      - estimated_total
       - guests
       - id
       - nightly_rate
       - nights
+      - planned_service_total
       - room
+      - room_moves
+      - room_segments
       - room_total
+      - service_total
       - start_date
       - status
       - status_label
@@ -1380,6 +1890,10 @@ components:
         end_date:
           type: string
           format: date
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/AddService'
         room_id:
           type: integer
         customer_id:
@@ -1410,18 +1924,77 @@ components:
       required:
       - full_name
       - id
-    BookingStatusEnum:
-      enum:
-      - confirmed
-      - checked_in
-      - checked_out
-      - cancelled
-      type: string
-      description: |-
-        * `confirmed` - Đã đặt
-        * `checked_in` - Đang ở
-        * `checked_out` - Đã trả
-        * `cancelled` - Đã hủy
+    BookingServicePlan:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        service_id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        unit:
+          type: string
+          readOnly: true
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,15}(?:\.\d{0,0})?$
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+          description: active/cancelled cho phát sinh; reserved/posted/cancelled cho
+            đặt kèm.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_by:
+          type: string
+          readOnly: true
+          nullable: true
+        cancel_reason:
+          type: string
+          readOnly: true
+        planned:
+          type: boolean
+          readOnly: true
+          default: true
+      required:
+      - cancel_reason
+      - cancelled_at
+      - cancelled_by
+      - created_at
+      - created_by
+      - id
+      - name
+      - planned
+      - quantity
+      - service_id
+      - status
+      - total
+      - unit
+      - unit_price
     CancelService:
       type: object
       properties:
@@ -1430,6 +2003,67 @@ components:
           maxLength: 200
       required:
       - reason
+    CategoryEnum:
+      enum:
+      - food
+      - laundry
+      - transport
+      - minibar
+      - wellness
+      - other
+      type: string
+      description: |-
+        * `food` - Ăn uống
+        * `laundry` - Giặt ủi
+        * `transport` - Đưa đón
+        * `minibar` - Minibar
+        * `wellness` - Thư giãn
+        * `other` - Khác
+    Checkout:
+      type: object
+      properties:
+        quote_token:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        expected_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        payment_received:
+          type: boolean
+        reference:
+          type: string
+          default: ''
+          maxLength: 100
+        notes:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - expected_total
+      - method
+      - payment_received
+      - quote_token
+    CheckoutResponse:
+      type: object
+      properties:
+        invoice:
+          $ref: '#/components/schemas/Invoice'
+        booking:
+          $ref: '#/components/schemas/Booking'
+      required:
+      - booking
+      - invoice
+    CleanRoom:
+      type: object
+      properties:
+        expected_updated_at:
+          type: string
+          format: date-time
+      required:
+      - expected_updated_at
     ConditionEnum:
       enum:
       - ready
@@ -1480,6 +2114,264 @@ components:
           format: date
       required:
       - end_date
+    Folio:
+      type: object
+      properties:
+        booking_id:
+          type: integer
+        booking_code:
+          type: string
+        guest_name:
+          type: string
+        guest_phone:
+          type: string
+        room_number:
+          type: string
+        room_type:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        nights:
+          type: integer
+        room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        currency:
+          type: string
+        can_checkout:
+          type: boolean
+        blocked_reason:
+          type: string
+        billing_policy:
+          type: string
+        quote_token:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/FolioLine'
+      required:
+      - billing_policy
+      - blocked_reason
+      - booking_code
+      - booking_id
+      - can_checkout
+      - currency
+      - end_date
+      - guest_name
+      - guest_phone
+      - lines
+      - nights
+      - quote_token
+      - room_number
+      - room_total
+      - room_type
+      - service_total
+      - start_date
+      - total
+    FolioLine:
+      type: object
+      properties:
+        kind:
+          type: string
+        source_usage_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        unit:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+      required:
+      - kind
+      - name
+      - quantity
+      - source_usage_id
+      - total
+      - unit
+      - unit_price
+    FolioResponse:
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/StateEnum'
+        folio:
+          allOf:
+          - $ref: '#/components/schemas/Folio'
+          nullable: true
+        invoice:
+          allOf:
+          - $ref: '#/components/schemas/Invoice'
+          nullable: true
+      required:
+      - folio
+      - invoice
+      - state
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        booking_id:
+          type: integer
+          readOnly: true
+        booking_code:
+          type: string
+          readOnly: true
+        guest_name:
+          type: string
+          readOnly: true
+        guest_phone:
+          type: string
+          readOnly: true
+        room_number:
+          type: string
+          readOnly: true
+        room_type:
+          type: string
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+          readOnly: true
+        service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+          readOnly: true
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+        issued_by:
+          type: string
+          readOnly: true
+        checked_out_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLine'
+          readOnly: true
+        payment:
+          allOf:
+          - $ref: '#/components/schemas/Payment'
+          readOnly: true
+      required:
+      - booking_code
+      - booking_id
+      - checked_out_at
+      - code
+      - end_date
+      - guest_name
+      - guest_phone
+      - id
+      - issued_at
+      - issued_by
+      - lines
+      - payment
+      - room_number
+      - room_total
+      - room_type
+      - service_total
+      - start_date
+      - total
+    InvoiceLine:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        position:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        source_usage_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        unit:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+          readOnly: true
+      required:
+      - id
+      - kind
+      - name
+      - position
+      - quantity
+      - source_usage_id
+      - total
+      - unit
+      - unit_price
+    KindEnum:
+      enum:
+      - room
+      - service
+      type: string
+      description: |-
+        * `room` - Tiền phòng
+        * `service` - Dịch vụ
     Login:
       type: object
       properties:
@@ -1512,6 +2404,22 @@ components:
           type: string
       required:
       - refresh
+    MethodEnum:
+      enum:
+      - cash
+      - bank_transfer
+      type: string
+      description: |-
+        * `cash` - Tiền mặt
+        * `bank_transfer` - Chuyển khoản
+    OldRoomConditionEnum:
+      enum:
+      - cleaning
+      - maintenance
+      type: string
+      description: |-
+        * `cleaning` - Cần dọn
+        * `maintenance` - Bảo trì
     PaginatedBookingList:
       type: object
       required:
@@ -1558,6 +2466,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Customer'
+    PaginatedInvoiceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
     PaginatedRoomList:
       type: object
       required:
@@ -1686,8 +2617,62 @@ components:
         notes:
           type: string
           maxLength: 300
+        description:
+          type: string
+          maxLength: 2000
+        area:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+        bed_type:
+          oneOf:
+          - $ref: '#/components/schemas/BedTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        bed_count:
+          type: integer
+          maximum: 20
+          minimum: 1
+          nullable: true
+        view:
+          type: string
+          maxLength: 100
+        amenities:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 30
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomImage'
+          readOnly: true
+        image_ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          writeOnly: true
+          maxItems: 10
+        upload_images:
+          type: array
+          items:
+            type: string
+            format: uri
+          writeOnly: true
+          maxItems: 10
+        cover_upload_index:
+          type: integer
+          minimum: 0
+          writeOnly: true
+          nullable: true
         is_active:
           type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
         updated_at:
           type: string
           format: date-time
@@ -1721,6 +2706,30 @@ components:
         name:
           type: string
           maxLength: 100
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        category_label:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          maxLength: 2000
+        notes:
+          type: string
+          maxLength: 300
+        image:
+          type: string
+          format: uri
+          nullable: true
+          writeOnly: true
+        image_url:
+          type: string
+          nullable: true
+          readOnly: true
+        remove_image:
+          type: boolean
+          writeOnly: true
+          default: false
         unit:
           $ref: '#/components/schemas/UnitEnum'
         unit_valid:
@@ -1732,10 +2741,72 @@ components:
           pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
         is_active:
           type: boolean
+        usage_count:
+          type: integer
+          readOnly: true
+        can_delete:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
         updated_at:
           type: string
           format: date-time
           readOnly: true
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+          readOnly: true
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
+        method_label:
+          type: string
+          readOnly: true
+        reference:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        received_at:
+          type: string
+          format: date-time
+          readOnly: true
+        received_by:
+          type: string
+          readOnly: true
+      required:
+      - amount
+      - code
+      - id
+      - method
+      - method_label
+      - notes
+      - received_at
+      - received_by
+      - reference
+    PriceModeEnum:
+      enum:
+      - target
+      - keep
+      type: string
+      description: |-
+        * `target` - Giá phòng mới
+        * `keep` - Giữ giá hiện tại
     RefreshResponse:
       type: object
       properties:
@@ -1764,6 +2835,140 @@ components:
       required:
       - end_date
       - start_date
+    RevenueDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+      required:
+      - date
+      - room_total
+      - service_total
+      - total
+    RevenueEstimate:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        estimated_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        confirmed_room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        stay_room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        booking_count:
+          type: integer
+        room_nights:
+          type: integer
+        service_count:
+          type: integer
+        currency:
+          type: string
+        is_estimate:
+          type: boolean
+        collected_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+          nullable: true
+        cash_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        bank_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        payment_count:
+          type: integer
+        planned_service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenueDay'
+        by_room_type:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenueType'
+      required:
+      - bank_total
+      - booking_count
+      - by_room_type
+      - cash_total
+      - collected_total
+      - confirmed_room_total
+      - currency
+      - daily
+      - end_date
+      - estimated_total
+      - is_estimate
+      - payment_count
+      - planned_service_total
+      - room_nights
+      - room_total
+      - service_count
+      - service_total
+      - start_date
+      - stay_room_total
+    RevenueType:
+      type: object
+      properties:
+        room_type_id:
+          type: integer
+        name:
+          type: string
+        room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+      required:
+      - name
+      - room_total
+      - room_type_id
+      - service_total
+      - total
     RoleEnum:
       enum:
       - admin
@@ -1806,17 +3011,73 @@ components:
         notes:
           type: string
           maxLength: 300
+        description:
+          type: string
+          maxLength: 2000
+        area:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+        bed_type:
+          oneOf:
+          - $ref: '#/components/schemas/BedTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        bed_count:
+          type: integer
+          maximum: 20
+          minimum: 1
+          nullable: true
+        view:
+          type: string
+          maxLength: 100
+        amenities:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 30
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomImage'
+          readOnly: true
+        image_ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          writeOnly: true
+          maxItems: 10
+        upload_images:
+          type: array
+          items:
+            type: string
+            format: uri
+          writeOnly: true
+          maxItems: 10
+        cover_upload_index:
+          type: integer
+          minimum: 0
+          writeOnly: true
+          nullable: true
         is_active:
           type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
         updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - condition_label
+      - created_at
       - display_status
       - floor
       - id
+      - images
       - number
       - room_type
       - room_type_id
@@ -1828,6 +3089,256 @@ components:
           $ref: '#/components/schemas/ConditionEnum'
       required:
       - condition
+    RoomImage:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        url:
+          type: string
+          readOnly: true
+        position:
+          type: integer
+          maximum: 32767
+          minimum: 0
+      required:
+      - id
+      - url
+    RoomMoveCommit:
+      type: object
+      properties:
+        room_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+        price_mode:
+          $ref: '#/components/schemas/PriceModeEnum'
+        old_room_condition:
+          $ref: '#/components/schemas/OldRoomConditionEnum'
+        reason:
+          type: string
+          maxLength: 300
+        quote_token:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+      required:
+      - old_room_condition
+      - price_mode
+      - quote_token
+      - reason
+      - room_id
+    RoomMoveHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        from_room_id:
+          type: integer
+          readOnly: true
+        to_room_id:
+          type: integer
+          readOnly: true
+        from_number:
+          type: string
+          readOnly: true
+        to_number:
+          type: string
+          readOnly: true
+        from_type_name:
+          type: string
+          readOnly: true
+        to_type_name:
+          type: string
+          readOnly: true
+        old_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+          readOnly: true
+        new_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+          readOnly: true
+        effective_date:
+          type: string
+          format: date
+          readOnly: true
+        price_mode:
+          allOf:
+          - $ref: '#/components/schemas/PriceModeEnum'
+          readOnly: true
+        old_room_condition:
+          allOf:
+          - $ref: '#/components/schemas/OldRoomConditionEnum'
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - effective_date
+      - from_number
+      - from_room_id
+      - from_type_name
+      - id
+      - new_rate
+      - old_rate
+      - old_room_condition
+      - price_mode
+      - reason
+      - to_number
+      - to_room_id
+      - to_type_name
+    RoomMoveInput:
+      type: object
+      properties:
+        room_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+        price_mode:
+          $ref: '#/components/schemas/PriceModeEnum'
+        old_room_condition:
+          $ref: '#/components/schemas/OldRoomConditionEnum'
+        reason:
+          type: string
+          maxLength: 300
+      required:
+      - old_room_condition
+      - price_mode
+      - reason
+      - room_id
+    RoomMoveOptions:
+      type: object
+      properties:
+        effective_date:
+          type: string
+          format: date
+        policy:
+          type: string
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+      required:
+      - effective_date
+      - policy
+      - rooms
+    RoomMoveQuote:
+      type: object
+      properties:
+        quote_token:
+          type: string
+        effective_date:
+          type: string
+          format: date
+        from_number:
+          type: string
+        to_number:
+          type: string
+        old_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+        new_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+        remaining_nights:
+          type: integer
+        current_room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        new_room_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        difference:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        service_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+        policy:
+          type: string
+      required:
+      - current_room_total
+      - difference
+      - effective_date
+      - from_number
+      - new_rate
+      - new_room_total
+      - old_rate
+      - policy
+      - quote_token
+      - remaining_nights
+      - service_total
+      - to_number
+      - total
+    RoomMoveResponse:
+      type: object
+      properties:
+        move_id:
+          type: integer
+        booking:
+          $ref: '#/components/schemas/Booking'
+      required:
+      - booking
+      - move_id
+    RoomSegment:
+      type: object
+      properties:
+        room_id:
+          type: integer
+        room_number:
+          type: string
+        room_type:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        nightly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
+        nights:
+          type: integer
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,18}(?:\.\d{0,0})?$
+      required:
+      - end_date
+      - nightly_rate
+      - nights
+      - room_id
+      - room_number
+      - room_type
+      - start_date
+      - total
     RoomType:
       type: object
       properties:
@@ -1862,6 +3373,30 @@ components:
         name:
           type: string
           maxLength: 100
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        category_label:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          maxLength: 2000
+        notes:
+          type: string
+          maxLength: 300
+        image:
+          type: string
+          format: uri
+          nullable: true
+          writeOnly: true
+        image_url:
+          type: string
+          nullable: true
+          readOnly: true
+        remove_image:
+          type: boolean
+          writeOnly: true
+          default: false
         unit:
           $ref: '#/components/schemas/UnitEnum'
         unit_valid:
@@ -1873,17 +3408,32 @@ components:
           pattern: ^-?\d{0,12}(?:\.\d{0,0})?$
         is_active:
           type: boolean
+        usage_count:
+          type: integer
+          readOnly: true
+        can_delete:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
         updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
+      - can_delete
+      - category_label
+      - created_at
       - id
+      - image_url
       - name
       - unit
       - unit_price
       - unit_valid
       - updated_at
+      - usage_count
     ServiceUnit:
       type: object
       properties:
@@ -1935,9 +3485,10 @@ components:
           pattern: ^-?\d{0,15}(?:\.\d{0,0})?$
           readOnly: true
         status:
-          allOf:
-          - $ref: '#/components/schemas/ServiceUsageStatusEnum'
+          type: string
           readOnly: true
+          description: active/cancelled cho phát sinh; reserved/posted/cancelled cho
+            đặt kèm.
         created_at:
           type: string
           format: date-time
@@ -1957,6 +3508,10 @@ components:
         cancel_reason:
           type: string
           readOnly: true
+        planned:
+          type: boolean
+          readOnly: true
+          default: false
       required:
       - cancel_reason
       - cancelled_at
@@ -1965,19 +3520,32 @@ components:
       - created_by
       - id
       - name
+      - planned
       - quantity
       - service_id
       - status
       - total
       - unit
       - unit_price
-    ServiceUsageStatusEnum:
+    StateEnum:
       enum:
-      - active
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - open
+        * `closed` - closed
+    StatusEnum:
+      enum:
+      - confirmed
+      - checked_in
+      - checked_out
       - cancelled
       type: string
       description: |-
-        * `active` - Đã ghi
+        * `confirmed` - Đã đặt
+        * `checked_in` - Đang ở
+        * `checked_out` - Đã trả
         * `cancelled` - Đã hủy
     UnitEnum:
       enum:
@@ -2012,6 +3580,10 @@ components:
     UsagePage:
       type: object
       properties:
+        blocked_reason:
+          type: string
+        booking_status:
+          type: string
         count:
           type: integer
         next:
@@ -2041,6 +3613,8 @@ components:
         can_edit:
           type: boolean
       required:
+      - blocked_reason
+      - booking_status
       - can_edit
       - count
       - estimated_total

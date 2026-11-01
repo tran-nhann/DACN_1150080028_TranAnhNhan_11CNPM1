@@ -1,25 +1,47 @@
 import 'package:flutter/material.dart';
 
 abstract final class AsterColors {
-  static const ink = Color(0xFF172C3C);
-  static const muted = Color(0xFF748591);
-  static const teal = Color(0xFF087F75);
-  static const dark = Color(0xFF123F43);
-  static const background = Color(0xFFF3F7F5);
-  static const border = Color(0xFFE5EBEF);
-  static const amber = Color(0xFFAE7414);
-  static const red = Color(0xFFB34F55);
+  /// Chữ chính #1F2937 (Tiêu đề, số liệu)
+  static const ink = Color(0xFF1F2937);
+
+  /// Chữ phụ #6B7280 (Mô tả, nhãn)
+  static const muted = Color(0xFF6B7280);
+
+  /// Navy chủ đạo #0B2A56 (Thẻ lớn, header, nút chính)
+  static const navy = Color(0xFF0B2A56);
+  static const teal = Color(0xFF0B2A56);
+  static const dark = Color(0xFF0B2A56);
+
+  /// Navy phụ #123A7A (Chuyển màu, hover)
+  static const navySecondary = Color(0xFF123A7A);
+
+  /// Gold thương hiệu #D4AF37 (Vòng %, ngôi sao, điểm nhấn)
+  static const gold = Color(0xFFD4AF37);
+  static const amber = Color(0xFFD4AF37);
+
+  /// Gold nhạt #F6E7B1 (Nền tab chọn, vùng nhấn nhẹ)
+  static const goldLight = Color(0xFFF6E7B1);
+
+  /// Nền ứng dụng #F8FAFC
+  static const background = Color(0xFFF8FAFC);
+
+  /// Viền thẻ #E2E8F0
+  static const border = Color(0xFFE2E8F0);
+
+  /// Cảnh báo / Hủy
+  static const red = Color(0xFFDC2626);
 }
 
 ThemeData asterTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: AsterColors.teal,
+    seedColor: AsterColors.navy,
     brightness: Brightness.light,
   );
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme.copyWith(
-      primary: AsterColors.teal,
+      primary: AsterColors.navy,
+      secondary: AsterColors.gold,
       surface: Colors.white,
       onSurface: AsterColors.ink,
     ),
@@ -70,12 +92,14 @@ ThemeData asterTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AsterColors.teal, width: 1.5),
+        borderSide: const BorderSide(color: AsterColors.navy, width: 1.5),
       ),
       hintStyle: const TextStyle(color: AsterColors.muted, fontSize: 13),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
+        backgroundColor: AsterColors.navy,
+        foregroundColor: Colors.white,
         minimumSize: const Size(48, 54),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
@@ -87,13 +111,17 @@ ThemeData asterTheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
+        foregroundColor: AsterColors.navy,
         minimumSize: const Size(48, 48),
         side: const BorderSide(color: AsterColors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      style: TextButton.styleFrom(
+        foregroundColor: AsterColors.navy,
+        minimumSize: const Size(48, 48),
+      ),
     ),
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
@@ -101,14 +129,21 @@ ThemeData asterTheme() {
     chipTheme: const ChipThemeData(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       side: BorderSide(color: AsterColors.border),
-      selectedColor: Color(0xFFE0F0EC),
+      selectedColor: AsterColors.goldLight,
       backgroundColor: Colors.white,
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
       elevation: 0,
-      indicatorColor: const Color(0xFFE0F0EC),
+      indicatorColor: AsterColors.goldLight,
       height: 74,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? AsterColors.navy
+              : AsterColors.muted,
+        ),
+      ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontFamily: 'Manrope',
@@ -117,14 +152,14 @@ ThemeData asterTheme() {
               ? FontWeight.w800
               : FontWeight.w500,
           color: states.contains(WidgetState.selected)
-              ? AsterColors.teal
+              ? AsterColors.navy
               : AsterColors.muted,
         ),
       ),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: AsterColors.dark,
+      backgroundColor: AsterColors.navy,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     dividerTheme: const DividerThemeData(

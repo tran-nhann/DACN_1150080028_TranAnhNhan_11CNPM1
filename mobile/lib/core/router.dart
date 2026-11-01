@@ -14,6 +14,7 @@ import '../features/shell/app_shell.dart';
 import 'providers.dart';
 import 'loading.dart';
 import 'interaction.dart';
+import 'models.dart';
 
 CustomTransitionPage<void> _page(
   BuildContext context,
@@ -76,8 +77,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/bookings/new',
-        pageBuilder: (context, state) =>
-            _page(context, state, const BookingForm()),
+        pageBuilder: (context, state) {
+          HotelRoom? initialRoom;
+          DateTime? initialStart;
+          if (state.extra is HotelRoom) {
+            initialRoom = state.extra as HotelRoom;
+          }
+          final dateStr = state.uri.queryParameters['date'];
+          if (dateStr != null) {
+            initialStart = DateTime.tryParse(dateStr);
+          }
+          return _page(
+            context,
+            state,
+            BookingForm(
+              initialRoom: initialRoom,
+              initialStart: initialStart,
+            ),
+          );
+        },
       ),
       GoRoute(path: '/customers', redirect: (_, _) => '/profile/customers'),
       GoRoute(path: '/services', redirect: (_, _) => '/profile/services'),

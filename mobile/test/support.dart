@@ -83,6 +83,8 @@ class StubAuth extends AuthController {
 
 class StubApi extends ApiClient {
   StubApi() : super(store: MemorySessionStore());
+  @override
+  Future<List<RoomType>> roomTypes() async => [sampleType];
   int savedGuests = 0;
   @override
   Future<List<ServiceUnit>> serviceUnits() async => const [

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/detail_widgets.dart';
+import '../../core/form_layout.dart';
 import '../../core/models.dart';
 import '../customers/customers_screen.dart';
 import '../services/stay_services.dart';
@@ -14,6 +15,9 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../shell/app_shell.dart';
 import 'booking_form.dart';
+import 'booking_timing.dart';
+import 'billing_panel.dart';
+import 'room_move_panel.dart';
 
 class BookingsScreen extends ConsumerStatefulWidget {
   const BookingsScreen({super.key, this.initialStatus = '', this.createdId});
@@ -161,94 +165,116 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   );
 }
 
-class BookingCard extends StatelessWidget {
+class BookingCard extends ConsumerWidget {
   const BookingCard({super.key, required this.booking, required this.onTap});
   final HotelBooking booking;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF2EF),
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Text(
-                    booking.room.number,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AsterColors.teal,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today = ref.watch(dashboardProvider).value?.date ?? DateTime.now();
+    final timing = BookingTiming.forBooking(booking, today);
+    return Material(
+      color: timing.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(17),
+        side: BorderSide(color: timing.color.withValues(alpha: .3)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: timing.color, width: 4)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: timing.color.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Text(
+                      booking.room.number,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: timing.color,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        booking.customerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: AsterColors.ink,
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.customerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color: AsterColors.ink,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${shortDate(booking.start)} → ${shortDate(booking.end)} · ${booking.nights} đêm',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: AsterColors.muted,
-                  size: 18,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Flexible(child: BookingBadge(booking)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    money(booking.total),
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AsterColors.ink,
+                        const SizedBox(height: 4),
+                        Text(
+                          '${DateFormat('dd/MM/yyyy').format(booking.start)} → ${DateFormat('dd/MM/yyyy').format(booking.end)} · ${booking.nights} đêm',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          booking.code,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AsterColors.muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: AsterColors.muted,
+                    size: 18,
+                  ),
+                ],
+              ),
+              if (timing.label != null) ...[
+                const SizedBox(height: 12),
+                BookingTimingBadge(timing: timing),
               ],
-            ),
-          ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Flexible(child: BookingBadge(booking)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      money(booking.estimatedTotal ?? booking.total),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AsterColors.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class BookingBadge extends StatelessWidget {
@@ -260,7 +286,7 @@ class BookingBadge extends StatelessWidget {
       'checked_in' => const Color(0xFF3977A8),
       'cancelled' => AsterColors.red,
       'checked_out' => AsterColors.muted,
-      _ => AsterColors.teal,
+      _ => const Color(0xFF6D28D9),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
@@ -304,8 +330,10 @@ class BookingDetail extends ConsumerStatefulWidget {
     required this.booking,
     this.onBack,
     this.onGuest,
+    this.onUpdated,
   });
   final VoidCallback? onBack, onGuest;
+  final ValueChanged<HotelBooking>? onUpdated;
   final HotelBooking booking;
   @override
   ConsumerState<BookingDetail> createState() => _BookingDetailState();
@@ -314,7 +342,7 @@ class BookingDetail extends ConsumerStatefulWidget {
 class _BookingDetailState extends ConsumerState<BookingDetail> {
   late HotelBooking _booking = widget.booking;
   late String _customerName = widget.booking.customerName;
-  bool _busy = false;
+  bool _busy = false, _rescheduleOpened = false;
   int _view = 0, _rescheduleVersion = 0;
   String? _error;
   String _pendingAction = '',
@@ -356,6 +384,7 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
       });
       setSheetHeight(context, .85);
       showMessage(context, 'Đã cập nhật');
+      widget.onUpdated?.call(updated);
     } catch (error) {
       if (mounted) {
         setSheetBusy(context, false);
@@ -406,12 +435,13 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
       'Gia hạn',
       data: {'end_date': dateOnly(newEnd)},
       details:
-          'Phòng ${_booking.room.number} · $_customerName\nĐến ${DateFormat('dd/MM/yyyy').format(newEnd)}\n${money(_booking.nightlyRate * newEnd.difference(_booking.start).inDays)}',
+          'Phòng ${_booking.room.number} · $_customerName\nĐến ${DateFormat('dd/MM/yyyy').format(newEnd)}\n${money(_booking.total + _booking.nightlyRate * newEnd.difference(_booking.end).inDays)}',
     );
   }
 
   void _reschedule() {
     setState(() {
+      _rescheduleOpened = true;
       _view = 1;
       _error = null;
     });
@@ -436,8 +466,8 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
                 Icons.room_service_outlined,
                 color: AsterColors.teal,
               ),
-              title: const Text(
-                'Dịch vụ',
+              title: Text(
+                _booking.status == 'confirmed' ? 'Dịch vụ đặt kèm' : 'Dịch vụ',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               subtitle: value.when(
@@ -480,9 +510,9 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
         ['confirmed', 'checked_in'].contains(_booking.status) &&
         _booking.nights < 90;
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
       children: [
-        Flexible(
+        Expanded(
           child: SingleChildScrollView(
             key: const PageStorageKey('booking_detail'),
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
@@ -511,6 +541,13 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: BookingBadge(_booking),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: BookingTimingBadge(
+                    timing: BookingTiming.forBooking(_booking, day),
+                  ),
                 ),
                 DetailField(
                   label: 'Mã đặt phòng',
@@ -607,15 +644,71 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
                   icon: Icons.receipt_long_outlined,
                   children: [
                     DetailField(
-                      label:
-                          '${money(_booking.nightlyRate)} × ${_booking.nights} đêm',
+                      label: _booking.roomMoves.isEmpty
+                          ? '${money(_booking.nightlyRate)} × ${_booking.nights} đêm'
+                          : 'Tổng theo từng phòng đã ở',
                       value: money(_booking.total),
                       emphasize: true,
                     ),
+                    if (_booking.roomMoves.isNotEmpty)
+                      for (final segment in _booking.roomSegments)
+                        DetailField(
+                          label:
+                              'Phòng ${segment.number} · ${shortDate(segment.start)} → ${shortDate(segment.end)}',
+                          value:
+                              '${segment.nights} đêm × ${money(segment.rate)} = ${money(segment.total)}',
+                        ),
                   ],
                 ),
-                if (['checked_in', 'checked_out'].contains(_booking.status))
+                if (_booking.roomMoves.isNotEmpty)
+                  DetailSection(
+                    title: 'Lịch sử chuyển phòng',
+                    icon: Icons.move_up_rounded,
+                    children: [
+                      for (final move in _booking.roomMoves)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '${move.from} → ${move.to} · ${dateStamp(move.createdAt)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text('${move.actor} · ${move.reason}'),
+                              Text(
+                                '${money(move.oldRate)} → ${money(move.newRate)} / đêm · ${move.priceMode == 'keep' ? 'Giữ giá hiện tại' : 'Giá phòng mới'}',
+                              ),
+                              Text(
+                                'Phòng cũ: ${move.condition == 'maintenance' ? 'Bảo trì' : 'Cần dọn'}',
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                if ([
+                  'confirmed',
+                  'checked_in',
+                  'checked_out',
+                ].contains(_booking.status))
                   _serviceEntry(),
+                if (['checked_in', 'checked_out'].contains(_booking.status))
+                  Material(
+                    color: Colors.white,
+                    child: ListTile(
+                      leading: const Icon(Icons.receipt_long_outlined),
+                      title: Text(
+                        _booking.status == 'checked_out'
+                            ? 'Xem hóa đơn / phiếu thu'
+                            : 'Bảng quyết toán lưu trú',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => setState(() => _view = 5),
+                    ),
+                  ),
                 if (_booking.createdAt != null || _booking.checkedInAt != null)
                   DetailSection(
                     title: 'Mốc thời gian',
@@ -628,8 +721,15 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
                         ),
                       if (_booking.checkedInAt != null)
                         DetailField(
-                          label: 'Đã nhận phòng',
+                          label: _booking.checkInRecordRecovered
+                              ? 'Khôi phục hồ sơ lưu trú'
+                              : 'Đã nhận phòng',
                           value: dateStamp(_booking.checkedInAt!),
+                        ),
+                      if (_booking.checkedOutAt != null)
+                        DetailField(
+                          label: 'Đã trả phòng',
+                          value: dateStamp(_booking.checkedOutAt!),
                         ),
                     ],
                   ),
@@ -643,8 +743,39 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (editable && (confirmed || canExtend)) ...[
+              if (editable &&
+                  (confirmed || _booking.status == 'checked_in')) ...[
                 const SizedBox(height: 12),
+                if (_booking.status == 'checked_in') ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          key: const Key('booking_add_service'),
+                          onPressed: _busy
+                              ? null
+                              : () => setState(() => _view = 7),
+                          icon: const Icon(Icons.add_shopping_cart_outlined),
+                          label: const Text('Thêm dịch vụ'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          key: const Key('booking_move_room'),
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  setState(() => _view = 8);
+                                  setSheetHeight(context, .95);
+                                },
+                          child: const Text('Chuyển phòng'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 if (editable && confirmed && !canCheckIn)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -669,23 +800,26 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
                               ? null
                               : confirmed
                               ? (canCheckIn
-                                    ? () => _confirm(
-                                        'check-in',
-                                        'Nhận phòng?',
-                                        'Nhận phòng',
-                                      )
+                                    ? () => setState(() => _view = 6)
                                     : null)
-                              : _extend,
+                              : () => setState(() => _view = 5),
                           icon: Icon(
                             confirmed
                                 ? Icons.login_rounded
-                                : Icons.more_time_rounded,
+                                : Icons.logout_rounded,
                             size: 20,
                           ),
-                          label: Text(confirmed ? 'Nhận phòng' : 'Gia hạn'),
+                          label: Text(confirmed ? 'Nhận phòng' : 'Trả phòng'),
                         ),
                       ),
                     ),
+                    if (!confirmed && canExtend) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: _busy ? null : _extend,
+                        child: const Text('Gia hạn'),
+                      ),
+                    ],
                     if (confirmed) ...[
                       const SizedBox(width: 8),
                       PopupMenuButton<String>(
@@ -752,7 +886,14 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy && _view == 0 && widget.onBack == null,
     onPopInvokedWithResult: (didPop, _) {
-      if (!didPop && !_busy && _view != 3 && _view != 4) {
+      if (!didPop &&
+          !_busy &&
+          _view != 3 &&
+          _view != 4 &&
+          _view != 5 &&
+          _view != 6 &&
+          _view != 7 &&
+          _view != 8) {
         if (_view != 0) {
           _back();
         } else {
@@ -765,15 +906,19 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
       confirmationIndex: 2,
       children: [
         _details(),
-        _RescheduleForm(
-          key: ValueKey(_rescheduleVersion),
-          booking: _booking,
-          busy: _busy,
-          error: _error,
-          onBack: _back,
-          onSave: (data) => _action('reschedule', data),
-        ),
+        if (_rescheduleOpened && _booking.status == 'confirmed')
+          _RescheduleForm(
+            key: ValueKey(_rescheduleVersion),
+            booking: _booking,
+            busy: _busy,
+            error: _error,
+            onBack: _back,
+            onSave: (data) => _action('reschedule', data),
+          )
+        else
+          const SizedBox.shrink(),
         ConfirmPanel(
+          pinned: true,
           title: _confirmTitle,
           details: _confirmDetails,
           label: _confirmLabel,
@@ -794,6 +939,56 @@ class _BookingDetailState extends ConsumerState<BookingDetail> {
           const SizedBox.shrink(),
         if (_view == 4)
           StayServicesPanel(booking: _booking, onBack: _back)
+        else
+          const SizedBox.shrink(),
+        if (_view == 5)
+          BillingPanel(
+            booking: _booking,
+            onBack: _back,
+            onUpdated: (updated) {
+              setState(() {
+                _booking = updated;
+                _customerName = updated.customerName;
+              });
+              widget.onUpdated?.call(updated);
+            },
+          )
+        else
+          const SizedBox.shrink(),
+        if (_view == 6)
+          StayServicesPanel(
+            booking: _booking,
+            onBack: _back,
+            onCheckedIn: (updated) {
+              setState(() {
+                _booking = updated;
+                _customerName = updated.customerName;
+                _view = 0;
+              });
+              widget.onUpdated?.call(updated);
+              showMessage(context, 'Đã nhận phòng và chuyển dịch vụ đặt kèm');
+            },
+          )
+        else
+          const SizedBox.shrink(),
+        if (_view == 7)
+          StayServicesPanel(booking: _booking, onBack: _back, initialAdd: true)
+        else
+          const SizedBox.shrink(),
+        if (_view == 8)
+          RoomMovePanel(
+            booking: _booking,
+            onBack: _back,
+            onMoved: (updated) {
+              setState(() {
+                _booking = updated;
+                _customerName = updated.customerName;
+                _view = 0;
+              });
+              setSheetHeight(context, .85);
+              widget.onUpdated?.call(updated);
+            },
+          )
         else
           const SizedBox.shrink(),
       ],
@@ -871,95 +1066,90 @@ class _RescheduleFormState extends ConsumerState<_RescheduleForm> {
     final rate = _room?.id == widget.booking.room.id
         ? widget.booking.nightlyRate
         : _room?.type.rate;
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ScreenHeading(
-              title: 'Lịch & phòng',
-              action: IconButton(
-                tooltip: 'Quay lại',
-                onPressed: widget.busy ? null : widget.onBack,
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
+    return PinnedFormLayout(
+      header: ScreenHeading(
+        title: 'Lịch & phòng',
+        action: IconButton(
+          tooltip: 'Quay lại',
+          onPressed: widget.busy ? null : widget.onBack,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PressScale(
+            child: OutlinedButton.icon(
+              key: const Key('reschedule_dates'),
+              onPressed: widget.busy ? null : _dates,
+              icon: const Icon(Icons.calendar_month_outlined),
+              label: Text('${shortDate(_start)} → ${shortDate(_end)}'),
             ),
-            PressScale(
-              child: OutlinedButton.icon(
-                key: const Key('reschedule_dates'),
-                onPressed: widget.busy ? null : _dates,
-                icon: const Icon(Icons.calendar_month_outlined),
-                label: Text('${shortDate(_start)} → ${shortDate(_end)}'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            AsyncContent(
-              value: rooms,
-              onRetry: () => ref.invalidate(availabilityProvider(query)),
-              builder: (data) => Column(
-                children: [
-                  if (data.items.isEmpty)
-                    const EmptyState(
-                      icon: Icons.bed_outlined,
-                      title: 'Hết phòng phù hợp',
-                      message: '',
-                    ),
-                  ...data.items.map(
-                    (room) => RoomChoice(
-                      key: Key('reschedule_room_${room.id}'),
-                      room: room,
-                      selected: _room?.id == room.id,
-                      nightlyRate: room.id == widget.booking.room.id
-                          ? widget.booking.nightlyRate
-                          : room.type.rate,
-                      onTap: widget.busy
-                          ? null
-                          : () => setState(() => _room = room),
-                    ),
+          ),
+          const SizedBox(height: 12),
+          AsyncContent(
+            value: rooms,
+            onRetry: () => ref.invalidate(availabilityProvider(query)),
+            builder: (data) => Column(
+              children: [
+                if (data.items.isEmpty)
+                  const EmptyState(
+                    icon: Icons.bed_outlined,
+                    title: 'Hết phòng phù hợp',
+                    message: '',
                   ),
-                ],
-              ),
-            ),
-            if (rate != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  money(rate * _end.difference(_start).inDays),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AsterColors.ink,
+                ...data.items.map(
+                  (room) => RoomChoice(
+                    key: Key('reschedule_room_${room.id}'),
+                    room: room,
+                    selected: _room?.id == room.id,
+                    nightlyRate: room.id == widget.booking.room.id
+                        ? widget.booking.nightlyRate
+                        : room.type.rate,
+                    onTap: widget.busy
+                        ? null
+                        : () => setState(() => _room = room),
                   ),
                 ),
-              ),
-            if (widget.error != null || _dateError != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InlineError(
-                  widget.error ?? _dateError!,
-                  key: const Key('reschedule_error'),
+              ],
+            ),
+          ),
+          if (rate != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                money(rate * _end.difference(_start).inDays),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AsterColors.ink,
                 ),
               ),
-            PressScale(
-              child: FilledButton(
-                key: const Key('reschedule_save'),
-                onPressed: selectionValid && !widget.busy
-                    ? () => widget.onSave({
-                        'room_id': _room!.id,
-                        'start_date': dateOnly(_start),
-                        'end_date': dateOnly(_end),
-                        'guests': widget.booking.guests,
-                        if (_room!.id != widget.booking.room.id)
-                          'expected_nightly_rate': _room!.type.rate,
-                      })
-                    : null,
-                child: widget.busy
-                    ? const AsterLoader(size: 24)
-                    : const Text('Lưu'),
+            ),
+          if (widget.error != null || _dateError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InlineError(
+                widget.error ?? _dateError!,
+                key: const Key('reschedule_error'),
               ),
             ),
-          ],
+        ],
+      ),
+      footer: PressScale(
+        child: FilledButton(
+          key: const Key('reschedule_save'),
+          onPressed: selectionValid && !widget.busy
+              ? () => widget.onSave({
+                  'room_id': _room!.id,
+                  'start_date': dateOnly(_start),
+                  'end_date': dateOnly(_end),
+                  'guests': widget.booking.guests,
+                  if (_room!.id != widget.booking.room.id)
+                    'expected_nightly_rate': _room!.type.rate,
+                })
+              : null,
+          child: widget.busy ? const AsterLoader(size: 24) : const Text('Lưu'),
         ),
       ),
     );

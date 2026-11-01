@@ -22,20 +22,27 @@ class Brand extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 42,
-        height: 42,
         decoration: BoxDecoration(
-          color: light ? Colors.white.withValues(alpha: .12) : AsterColors.dark,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: light
+                ? Colors.white.withValues(alpha: .2)
+                : const Color(0xFFD4AF37).withValues(alpha: .3),
+            width: 1,
+          ),
         ),
-        child: const Icon(
-          Icons.local_florist_outlined,
-          color: Color(0xFFAAE4CD),
-          size: 25,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(9),
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 38,
+            height: 38,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
       if (!compact) ...[
-        const SizedBox(width: 11),
+        const SizedBox(width: 10),
         Flexible(
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -43,11 +50,11 @@ class Brand extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'aster',
+                  'Khách sạn Ngàn Sao',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -.8,
+                    letterSpacing: -.3,
                     color: light ? Colors.white : AsterColors.ink,
                   ),
                 ),
@@ -73,7 +80,10 @@ class Surface extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: color,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: const BorderSide(color: AsterColors.border),
+    ),
     child: Padding(padding: padding, child: child),
   );
 }
@@ -118,15 +128,15 @@ class ConditionBadge extends StatelessWidget {
   final String condition;
   static (String, Color, IconData) details(String condition) =>
       switch (condition) {
-        'occupied' => ('Đang ở', Color(0xFF3977A8), Icons.bed_outlined),
+        'occupied' => ('Đang ở', Color(0xFF1D4ED8), Icons.bed_outlined),
         'reserved' => (
           'Đã đặt',
-          Color(0xFF7C62AB),
+          Color(0xFF7C3AED),
           Icons.event_available_outlined,
         ),
         'cleaning' => (
           'Cần dọn',
-          AsterColors.amber,
+          AsterColors.gold,
           Icons.cleaning_services_outlined,
         ),
         'maintenance' => ('Bảo trì', AsterColors.red, Icons.build_outlined),
@@ -353,7 +363,7 @@ class RoomChoice extends StatelessWidget {
       duration: motionDuration(context, 160),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFE4F2EA) : Colors.white,
+        color: selected ? AsterColors.goldLight : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: selected ? AsterColors.teal : AsterColors.border,

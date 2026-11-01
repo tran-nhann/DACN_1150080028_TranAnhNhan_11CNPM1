@@ -7,16 +7,20 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/models.dart';
+import '../../core/form_layout.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../customers/customers_screen.dart';
+import 'booking_service_cart.dart';
 
 String dateOnly(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 String shortDate(DateTime date) => DateFormat('dd/MM').format(date);
 
 class BookingForm extends ConsumerStatefulWidget {
-  const BookingForm({super.key});
+  const BookingForm({super.key, this.initialRoom, this.initialStart});
+  final HotelRoom? initialRoom;
+  final DateTime? initialStart;
   @override
   ConsumerState<BookingForm> createState() => _BookingFormState();
 }
@@ -29,6 +33,30 @@ class _BookingFormState extends ConsumerState<BookingForm> {
   late DateTime _start, _end;
   Guest? _guest;
   HotelRoom? _room;
+  final _services = <BookingServiceChoice>[];
+  int get _serviceTotal => _services.fold(0, (sum, item) => sum + item.total);
+
+  Future<void> _pickService() async {
+    if (_busy) return;
+    final service = await pickBookingService(context);
+    if (!mounted || service == null) return;
+    setState(() {
+      final index = _services.indexWhere(
+        (item) => item.service.id == service.id,
+      );
+      if (index < 0) {
+        _services.add(BookingServiceChoice(service, 1));
+      } else {
+        _services[index] = BookingServiceChoice(
+          service,
+          _services[index].quantity,
+        );
+      }
+      _requestKey = const Uuid().v4();
+      _error = null;
+    });
+  }
+
   String _requestKey = const Uuid().v4();
   bool _busy = false;
   String? _error;
@@ -36,9 +64,17 @@ class _BookingFormState extends ConsumerState<BookingForm> {
   @override
   void initState() {
     super.initState();
-    final today = ref.read(dashboardProvider).value?.date ?? DateTime.now();
-    _start = DateTime(today.year, today.month, today.day);
-    _end = _start.add(const Duration(days: 1));
+    if (widget.initialStart != null) {
+      _start = widget.initialStart!;
+      _end = _start.add(const Duration(days: 1));
+    } else {
+      final today = ref.read(dashboardProvider).value?.date ?? DateTime.now();
+      _start = DateTime(today.year, today.month, today.day);
+      _end = _start.add(const Duration(days: 1));
+    }
+    if (widget.initialRoom != null) {
+      _room = widget.initialRoom;
+    }
   }
 
   AvailabilityQuery get _query => (
@@ -129,6 +165,10 @@ class _BookingFormState extends ConsumerState<BookingForm> {
 
   Future<void> _submit() async {
     if (_busy || _room == null || _guest == null) return;
+    if (_services.any((item) => item.quantity < 1 || item.quantity > 999)) {
+      setState(() => _error = 'Số lượng dịch vụ phải từ 1–999.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -141,6 +181,8 @@ class _BookingFormState extends ConsumerState<BookingForm> {
         'end_date': dateOnly(_end),
         'guests': _guests,
         'expected_nightly_rate': _room!.type.rate,
+        if (_services.isNotEmpty)
+          'services': _services.map((item) => item.toJson()).toList(),
       }, _requestKey);
       if (!mounted) return;
       refreshBookings(ref);
@@ -164,7 +206,7 @@ class _BookingFormState extends ConsumerState<BookingForm> {
       if (!didPop && !_busy && _step > 0) _back();
     },
     child: Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Đặt phòng'),
         leading: IconButton(
@@ -174,112 +216,102 @@ class _BookingFormState extends ConsumerState<BookingForm> {
         ),
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              child: Row(
-                children: List.generate(
-                  3,
-                  (index) => Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(right: index == 2 ? 0 : 8),
-                      child: Column(
-                        children: [
-                          AnimatedContainer(
-                            duration: motionDuration(context, 160),
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: index <= _step
-                                  ? AsterColors.teal
-                                  : AsterColors.border,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                          const SizedBox(height: 9),
-                          Text(
-                            ['Lịch', 'Phòng', 'Chốt'][index],
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: index == _step
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              color: index == _step
-                                  ? AsterColors.ink
-                                  : AsterColors.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: MotionSwap(
-                  direction: _direction,
-                  child: KeyedSubtree(
-                    key: ValueKey(_step),
+        child: PinnedFormLayout(
+          header: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
+            child: Row(
+              children: List.generate(
+                3,
+                (index) => Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: index == 2 ? 0 : 8),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (_error != null &&
-                            _error != 'Chọn khách hàng.' &&
-                            _error != 'Chọn phòng.')
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: InlineError(
-                              _error!,
-                              key: const Key('booking_error'),
-                            ),
+                        AnimatedContainer(
+                          duration: motionDuration(context, 160),
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: index <= _step
+                                ? AsterColors.teal
+                                : AsterColors.border,
+                            borderRadius: BorderRadius.circular(3),
                           ),
-                        _step == 0
-                            ? _details()
-                            : _step == 1
-                            ? _rooms()
-                            : _review(),
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          ['Lịch', 'Phòng', 'Chốt'][index],
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: index == _step
+                                ? FontWeight.w800
+                                : FontWeight.w500,
+                            color: index == _step
+                                ? AsterColors.ink
+                                : AsterColors.muted,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          ),
+          body: MotionSwap(
+            direction: _direction,
+            child: KeyedSubtree(
+              key: ValueKey(_step),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: PressScale(
-                      child: FilledButton(
-                        key: const Key('booking_next'),
-                        onPressed: _busy
-                            ? null
-                            : () {
-                                if (_step == 2) {
-                                  _submit();
-                                } else if (_step == 0 && _guest == null) {
-                                  _missing(_guestAnchor, 'Chọn khách hàng.');
-                                } else if (_step == 1 && _room == null) {
-                                  _missing(_roomsAnchor, 'Chọn phòng.');
-                                } else {
-                                  _goStep(_step + 1);
-                                }
-                              },
-                        child: _busy
-                            ? const AsterLoader(size: 24, color: Colors.white)
-                            : Text(_step == 2 ? 'Đặt phòng' : 'Tiếp tục'),
+                  if (_error != null &&
+                      _error != 'Chọn khách hàng.' &&
+                      _error != 'Chọn phòng.')
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: InlineError(
+                        _error!,
+                        key: const Key('booking_error'),
                       ),
                     ),
-                  ),
+                  _step == 0
+                      ? _details()
+                      : _step == 1
+                      ? _rooms()
+                      : _review(),
                 ],
               ),
             ),
-          ],
+          ),
+          footer: PressScale(
+            child: FilledButton(
+              key: const Key('booking_next'),
+              onPressed: _busy
+                  ? null
+                  : () {
+                      if (_step == 2) {
+                        _submit();
+                      } else if (_step == 0 && _guest == null) {
+                        _missing(_guestAnchor, 'Chọn khách hàng.');
+                      } else if (_step == 1 && _room == null) {
+                        _missing(_roomsAnchor, 'Chọn phòng.');
+                      } else if (_step == 1 &&
+                          _services.any(
+                            (item) => item.quantity < 1 || item.quantity > 999,
+                          )) {
+                        _missing(
+                          _roomsAnchor,
+                          'Số lượng dịch vụ phải từ 1–999.',
+                        );
+                      } else {
+                        _goStep(_step + 1);
+                      }
+                    },
+              child: _busy
+                  ? const AsterLoader(size: 24, color: Colors.white)
+                  : Text(_step == 2 ? 'Đặt phòng' : 'Tiếp tục'),
+            ),
+          ),
         ),
       ),
     ),
@@ -394,19 +426,43 @@ class _BookingFormState extends ConsumerState<BookingForm> {
             message: '',
           ),
         ...data.items.map(
-          (room) => RoomChoice(
-            key: Key('select_room_${room.id}'),
-            room: room,
-            selected: _room?.id == room.id,
-            onTap: () => setState(() {
-              if (_room?.id != room.id) _requestKey = const Uuid().v4();
-              _room = room;
-              _error = null;
-            }),
+          (room) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              RoomChoice(
+                key: Key('select_room_${room.id}'),
+                room: room,
+                selected: _room?.id == room.id,
+                onTap: () => setState(() {
+                  if (_room?.id != room.id) _requestKey = const Uuid().v4();
+                  _room = room;
+                  _error = null;
+                }),
+              ),
+              if (_room?.id == room.id) _serviceCart(),
+            ],
           ),
         ),
       ],
     ),
+  );
+
+  Widget _serviceCart() => BookingServiceCart(
+    items: _services,
+    busy: _busy,
+    onAdd: _pickService,
+    onQuantity: (id, quantity) => setState(() {
+      final index = _services.indexWhere((item) => item.service.id == id);
+      _services[index] = BookingServiceChoice(
+        _services[index].service,
+        quantity,
+      );
+      _requestKey = const Uuid().v4();
+    }),
+    onRemove: (id) => setState(() {
+      _services.removeWhere((item) => item.service.id == id);
+      _requestKey = const Uuid().v4();
+    }),
   );
 
   Widget _review() => Column(
@@ -450,6 +506,28 @@ class _BookingFormState extends ConsumerState<BookingForm> {
               money(_room!.type.rate * _end.difference(_start).inDays),
               bold: true,
             ),
+            if (_services.isNotEmpty) ...[
+              const Divider(height: 24),
+              for (final item in _services)
+                _line(
+                  '${item.service.name} · ${item.quantity} ${item.service.unit}',
+                  money(item.total),
+                ),
+              _line('Dịch vụ đặt kèm', money(_serviceTotal)),
+              _line(
+                'Tổng dự kiến',
+                money(
+                  _room!.type.rate * _end.difference(_start).inDays +
+                      _serviceTotal,
+                ),
+                bold: true,
+              ),
+              TextButton(
+                key: const Key('review_edit_services'),
+                onPressed: _busy ? null : () => _goStep(1),
+                child: const Text('Sửa dịch vụ đặt kèm'),
+              ),
+            ],
           ],
         ),
       ),

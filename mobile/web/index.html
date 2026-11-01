@@ -1,148 +1,227 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#082c30">
+  <meta name="theme-color" content="#040C1E">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Aster Hotel — Không gian quản lý khách sạn.">
+  <meta name="description" content="Khách sạn Ngàn Sao — Không gian quản lý khách sạn sang trọng & đẳng cấp.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Aster Hotel">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Khách sạn Ngàn Sao">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Aster Hotel</title>
+  <title>Khách sạn Ngàn Sao</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    html, body { margin: 0; height: 100%; background: #f5f7f9; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #030814;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
     #aster-startup {
       position: fixed; inset: 0; z-index: 10000;
       display: grid; place-items: center; grid-template-rows: minmax(0, 1fr);
-      background: #f5f7f9;
-      transition: opacity .4s ease;
+      background: #030814;
+      transition: opacity .6s cubic-bezier(0.4, 0, 0.2, 1);
     }
     #aster-startup.leaving { opacity: 0; pointer-events: none; }
     .startup-frame {
       position: relative; width: min(100%, 480px); height: 100%; min-height: 0;
-      overflow: hidden; display: grid; place-items: center; grid-template-rows: minmax(0, 1fr);
-      color: #aae4cd;
-      background: linear-gradient(135deg, #163f40, #082c30 55%, #062328);
+      overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 50% 35%, #0d265e 0%, #061536 45%, #030a1c 85%, #020612 100%);
+      box-shadow: 0 0 60px rgba(0,0,0,0.9);
     }
-    .startup-frame::before, .startup-frame::after {
-      content: ''; position: absolute; width: 850px; height: 850px;
-      border-radius: 50%; pointer-events: none;
-      background: radial-gradient(circle, #3e977b30, transparent 65%);
-      top: -250px; left: 0;
-      animation: atmosphere 8s ease-in-out infinite alternate;
+    /* Starfield background */
+    .star {
+      position: absolute; border-radius: 50%; background: #fff0a8;
+      box-shadow: 0 0 6px rgba(255, 240, 168, 0.8);
+      animation: twinkle 3s ease-in-out infinite alternate;
     }
-    .startup-frame::after {
-      background: radial-gradient(circle, #24777c30, transparent 65%);
-      top: 50%; left: -500px; animation-delay: -4s;
+    .sparkle-star {
+      position: absolute; color: #fff0a8; font-size: 14px; line-height: 1;
+      text-shadow: 0 0 8px #ffd54f;
+      animation: sparkle 2.5s ease-in-out infinite alternate;
     }
-    .arches { position: absolute; inset: 16% 28px -100px; border: 1px solid #aae4cd10; border-radius: 240px 240px 0 0; }
-    .arches::before, .arches::after { content: ''; position: absolute; inset: 18px 18px -1px; border: inherit; border-radius: inherit; }
-    .arches::after { inset: 36px 36px -1px; }
-    .startup-content { position: relative; display: flex; align-items: center; flex-direction: column; padding-bottom: 31px; }
-    .aster-mark { position: relative; width: 260px; height: 260px; display: grid; place-items: center; }
-    .aster-mark::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, #aae4cd20, transparent 68%); }
-    .orbit { position: absolute; width: 72%; height: 72%; border: 1px solid #aae4cd1a; border-radius: 50%; }
-    .orbit::before { content: ''; position: absolute; inset: -1px; border: 1.5px solid transparent; border-top-color: #aae4cda0; border-radius: 50%; animation: orbit 3.2s linear infinite; }
-    .orbit.outer { width: 90%; height: 90%; animation: orbit 6.4s linear infinite reverse; }
-    .orbit.outer::before { inset: auto; top: 50%; left: -3px; width: 6px; height: 6px; background: #aae4cd; border: 0; animation: none; }
-    .orbit.outer::after { content: ''; position: absolute; bottom: 6%; right: 23%; width: 4px; height: 4px; border-radius: 50%; background: #aae4cd60; }
-    .mark-tile {
-      width: 114px; height: 114px; border-radius: 34px; border: 1px solid #aae4cd3b;
-      background: linear-gradient(135deg, #24635c, #103d3e);
-      display: grid; place-items: center; box-sizing: border-box;
+    /* Horizon & Arches */
+    .horizon-glow {
+      position: absolute; bottom: 0; left: -20%; width: 140%; height: 28%;
+      border-radius: 50% 50% 0 0;
+      background: radial-gradient(ellipse at 50% 100%, rgba(229, 184, 66, 0.12), transparent 70%);
+      pointer-events: none;
     }
-    .mark-tile svg { width: 80px; height: 80px; animation: breathe 3.2s ease-in-out infinite; }
-    .petal { animation: petal 3.2s ease-in-out infinite; }
-    .p1 { animation-delay: -.25s; } .p2 { animation-delay: -.5s; }
-    .p3 { animation-delay: -.75s; } .p4 { animation-delay: -1s; }
-    .p5 { animation-delay: -1.25s; } .p6 { animation-delay: -1.5s; } .p7 { animation-delay: -1.75s; }
-    .wordmark { color: #f0f7f2; font: 700 38px/1.2 'Aster Manrope', sans-serif; letter-spacing: 5px; margin-top: 12px; }
-    .loading-dots { display: flex; gap: 10px; margin-top: 36px; }
-    .loading-dots i { width: 5px; height: 5px; border-radius: 50%; background: #aae4cd; animation: petal 1.6s ease-in-out infinite; }
-    .loading-dots i:nth-child(2) { animation-delay: -.25s; } .loading-dots i:nth-child(3) { animation-delay: -.5s; }
-    .startup-footer { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); width: 32px; height: 3px; border-radius: 4px; background: #aae4cd40; }
-    @font-face { font-family: 'Aster Manrope'; src: url('assets/assets/fonts/Manrope.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
-    @keyframes orbit { to { transform: rotate(360deg); } }
-    @keyframes breathe { 50% { transform: scale(1.04) rotate(3deg); } }
-    @keyframes petal { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
-    @keyframes atmosphere { to { transform: translate(20px, -15px); } }
-    @media (max-height: 450px) { .startup-content { transform: scale(.7); } }
+    .arches {
+      position: absolute; inset: 14% 24px -60px;
+      border: 1px solid rgba(229, 184, 66, 0.12);
+      border-radius: 260px 260px 0 0;
+      pointer-events: none;
+    }
+    .arches::before {
+      content: ''; position: absolute; inset: 18px 18px -1px;
+      border: 1px solid rgba(229, 184, 66, 0.08);
+      border-radius: inherit;
+    }
+    /* Startup content */
+    .startup-content {
+      position: relative; z-index: 2;
+      display: flex; align-items: center; flex-direction: column;
+      text-align: center; padding: 20px;
+    }
+    .logo-wrapper {
+      position: relative; width: 150px; height: 150px;
+      display: grid; place-items: center;
+      margin-bottom: 24px;
+    }
+    .logo-halo {
+      position: absolute; inset: -15px; border-radius: 40px;
+      background: radial-gradient(circle, rgba(229, 184, 66, 0.28) 0%, rgba(229, 184, 66, 0) 70%);
+      animation: haloPulse 3.5s ease-in-out infinite alternate;
+    }
+    .logo-card {
+      position: relative; width: 130px; height: 130px; border-radius: 28px;
+      border: 1.5px solid rgba(229, 184, 66, 0.6);
+      box-shadow: 0 0 35px rgba(229, 184, 66, 0.35), 0 12px 25px rgba(0,0,0,0.6);
+      overflow: hidden;
+      animation: logoFloat 4s ease-in-out infinite alternate;
+    }
+    .logo-card img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .wordmark {
+      color: #fff7db; font-size: 22px; font-weight: 800;
+      letter-spacing: 3px; text-transform: uppercase;
+      text-shadow: 0 0 16px rgba(229, 184, 66, 0.6);
+      margin: 0 0 8px 0;
+    }
+    .five-stars {
+      display: flex; gap: 6px; justify-content: center;
+      color: #e5b842; font-size: 14px; margin-bottom: 6px;
+    }
+    .five-stars span {
+      animation: starWave 2s ease-in-out infinite alternate;
+    }
+    .five-stars span:nth-child(1) { animation-delay: 0s; }
+    .five-stars span:nth-child(2) { animation-delay: 0.2s; }
+    .five-stars span:nth-child(3) { animation-delay: 0.4s; }
+    .five-stars span:nth-child(4) { animation-delay: 0.6s; }
+    .five-stars span:nth-child(5) { animation-delay: 0.8s; }
+    .subtext {
+      color: rgba(229, 184, 66, 0.8);
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 2.5px; text-transform: uppercase;
+    }
+    .loading-track {
+      display: flex; gap: 8px; margin-top: 36px;
+    }
+    .loading-track i {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #fff0a8;
+      box-shadow: 0 0 8px #ffd54f;
+      animation: dotWave 1.8s ease-in-out infinite;
+    }
+    .loading-track i:nth-child(2) { animation-delay: 0.2s; }
+    .loading-track i:nth-child(3) { animation-delay: 0.4s; }
+    .loading-track i:nth-child(4) { animation-delay: 0.6s; }
+    .loading-track i:nth-child(5) { animation-delay: 0.8s; }
+    .startup-footer {
+      position: absolute; bottom: max(28px, env(safe-area-inset-bottom));
+      width: 38px; height: 3px; border-radius: 4px;
+      background: rgba(229, 184, 66, 0.35);
+    }
+    @keyframes twinkle {
+      0% { opacity: 0.2; transform: scale(0.8); }
+      100% { opacity: 0.9; transform: scale(1.3); }
+    }
+    @keyframes sparkle {
+      0% { opacity: 0.3; transform: scale(0.8) rotate(0deg); }
+      100% { opacity: 1; transform: scale(1.25) rotate(15deg); }
+    }
+    @keyframes haloPulse {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      100% { transform: scale(1.1); opacity: 0.9; }
+    }
+    @keyframes logoFloat {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-5px); }
+    }
+    @keyframes starWave {
+      0% { opacity: 0.4; transform: scale(0.85); color: #c59b27; }
+      100% { opacity: 1; transform: scale(1.2); color: #fff0a8; text-shadow: 0 0 10px #ffd54f; }
+    }
+    @keyframes dotWave {
+      0%, 100% { opacity: 0.25; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.4); }
+    }
     @media (prefers-reduced-motion: reduce) {
       #aster-startup, #aster-startup * { animation: none !important; transition: none !important; }
-      #aster-startup *::before, #aster-startup *::after { animation: none !important; }
     }
   </style>
 </head>
 <body>
-  <div id="aster-startup" role="status" aria-label="Đang mở Aster Hotel">
+  <div id="aster-startup" role="status" aria-label="Đang mở Khách sạn Ngàn Sao">
     <div class="startup-frame" aria-hidden="true">
+      <!-- Twinkling stars scattered in the sky -->
+      <div class="star" style="top: 12%; left: 15%; width: 3px; height: 3px; animation-delay: 0.2s;"></div>
+      <div class="star" style="top: 18%; left: 78%; width: 2px; height: 2px; animation-delay: 0.8s;"></div>
+      <div class="star" style="top: 25%; left: 22%; width: 2.5px; height: 2.5px; animation-delay: 1.4s;"></div>
+      <div class="star" style="top: 8%; left: 48%; width: 3px; height: 3px; animation-delay: 0.5s;"></div>
+      <div class="star" style="top: 32%; left: 85%; width: 2px; height: 2px; animation-delay: 1.8s;"></div>
+      <div class="star" style="top: 68%; left: 12%; width: 2.5px; height: 2.5px; animation-delay: 1.1s;"></div>
+      <div class="star" style="top: 75%; left: 88%; width: 3px; height: 3px; animation-delay: 2.1s;"></div>
+      <div class="star" style="top: 82%; left: 28%; width: 2px; height: 2px; animation-delay: 0.7s;"></div>
+
+      <!-- Prominent 4-pointed sparkle stars -->
+      <div class="sparkle-star" style="top: 10%; right: 18%; animation-delay: 0.3s;">✦</div>
+      <div class="sparkle-star" style="top: 22%; left: 10%; animation-delay: 1.2s; font-size: 11px;">✦</div>
+      <div class="sparkle-star" style="top: 72%; right: 14%; animation-delay: 1.7s; font-size: 12px;">✦</div>
+
+      <!-- Architectural arches & Horizon -->
       <div class="arches"></div>
+      <div class="horizon-glow"></div>
+
+      <!-- Center Logo & Branding -->
       <div class="startup-content">
-        <div class="aster-mark">
-          <div class="orbit"></div><div class="orbit outer"></div>
-          <div class="mark-tile">
-            <svg viewBox="-40 -40 80 80" fill="currentColor">
-              <defs><ellipse id="aster-petal" cx="0" cy="-21" rx="7.6" ry="16.3" /></defs>
-              <use class="petal" href="#aster-petal" />
-              <use class="petal p1" href="#aster-petal" transform="rotate(45)" />
-              <use class="petal p2" href="#aster-petal" transform="rotate(90)" />
-              <use class="petal p3" href="#aster-petal" transform="rotate(135)" />
-              <use class="petal p4" href="#aster-petal" transform="rotate(180)" />
-              <use class="petal p5" href="#aster-petal" transform="rotate(225)" />
-              <use class="petal p6" href="#aster-petal" transform="rotate(270)" />
-              <use class="petal p7" href="#aster-petal" transform="rotate(315)" />
-              <circle r="5.3" />
-            </svg>
+        <div class="logo-wrapper">
+          <div class="logo-halo"></div>
+          <div class="logo-card">
+            <img src="logo.png" alt="Khách sạn Ngàn Sao" />
           </div>
         </div>
-        <div class="wordmark">aster</div>
-        <div class="loading-dots"><i></i><i></i><i></i></div>
+        <h1 class="wordmark">Khách sạn Ngàn Sao</h1>
+        <div class="five-stars">
+          <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+        </div>
+        <div class="subtext">ĐẲNG CẤP LƯU TRÚ & NGHỈ DƯỠNG</div>
+        <div class="loading-track"><i></i><i></i><i></i><i></i><i></i></div>
       </div>
       <div class="startup-footer"></div>
     </div>
   </div>
   <script>
-    // Keep the launch artwork visible until Flutter has actually painted.
+    // Keep the splash animation visible for at least 2.5s so user can admire the logo & animation
+    const launchStart = performance.now();
+    const MIN_SPLASH_MS = 2500;
+
     window.addEventListener('flutter-first-frame', function () {
-      const startup = document.getElementById('aster-startup');
-      if (!startup) return;
-      startup.classList.add('leaving');
-      startup.addEventListener('transitionend', () => startup.remove(), { once: true });
-      setTimeout(() => startup.remove(), 450);
+      const elapsed = performance.now() - launchStart;
+      const delay = Math.max(0, MIN_SPLASH_MS - elapsed);
+      setTimeout(function () {
+        const startup = document.getElementById('aster-startup');
+        if (!startup) return;
+        startup.classList.add('leaving');
+        startup.addEventListener('transitionend', () => startup.remove(), { once: true });
+        setTimeout(() => startup.remove(), 700);
+      }, delay);
     }, { once: true });
   </script>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

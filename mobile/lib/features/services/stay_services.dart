@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/api.dart';
 import '../../core/detail_widgets.dart';
+import '../../core/form_layout.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
@@ -16,16 +17,59 @@ class StayServicesPanel extends ConsumerStatefulWidget {
     super.key,
     required this.booking,
     required this.onBack,
+    this.onCheckedIn,
+    this.onChanged,
+    this.initialAdd = false,
   });
   final HotelBooking booking;
   final VoidCallback onBack;
+  final ValueChanged<HotelBooking>? onCheckedIn;
+  final VoidCallback? onChanged;
+  final bool initialAdd;
   @override
   ConsumerState<StayServicesPanel> createState() => _StayServicesPanelState();
 }
 
 class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
-  int _view = 0, _page = 1, _formVersion = 0;
+  String get _status =>
+      ref
+          .read(
+            stayServicesProvider((bookingId: widget.booking.id, page: _page)),
+          )
+          .value
+          ?.bookingStatus ??
+      widget.booking.status;
+  late int _view = widget.initialAdd ? 1 : 0;
+  int _page = 1, _formVersion = 0;
   ServiceUsage? _selected;
+  bool _receiving = false;
+  String? _receiveError;
+  Future<void> _receive() async {
+    if (_receiving) return;
+    setState(() {
+      _receiving = true;
+      _receiveError = null;
+    });
+    setSheetBusy(context, true);
+    try {
+      final updated = await ref
+          .read(apiProvider)
+          .bookingAction(widget.booking.id, 'check-in');
+      if (!mounted) return;
+      setSheetBusy(context, false);
+      setState(() => _receiving = false);
+      refreshBookings(ref);
+      widget.onCheckedIn?.call(updated);
+    } catch (error) {
+      if (!mounted) return;
+      setSheetBusy(context, false);
+      setState(() {
+        _receiving = false;
+        _receiveError = error.toString();
+      });
+    }
+  }
+
   void _back() {
     if (sheetIsBusy(context)) return;
     setState(() => _view = 0);
@@ -35,6 +79,10 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
 
   void _saved() {
     ref.invalidate(stayServicesProvider);
+    ref.invalidate(revenueProvider);
+    ref.invalidate(bookingsProvider);
+    ref.invalidate(bookingLookupProvider);
+    widget.onChanged?.call();
     setState(() {
       _view = 0;
       _page = 1;
@@ -51,7 +99,8 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
         ref.watch(authProvider).user?.canEditRooms == true &&
         value.value?.canEdit == true &&
         !value.hasError &&
-        !value.isLoading;
+        !value.isLoading &&
+        !_receiving;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -63,12 +112,16 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ScreenHeading(
-                  title: 'Dịch vụ',
+                  title: widget.onCheckedIn != null
+                      ? 'Nhận phòng & dịch vụ'
+                      : _status == 'confirmed'
+                      ? 'Dịch vụ đặt kèm'
+                      : 'Dịch vụ',
                   subtitle:
                       'Phòng ${widget.booking.room.number} · ${widget.booking.customerName}',
                   action: IconButton(
                     tooltip: 'Đóng',
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _receiving ? null : () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),
                 ),
@@ -78,7 +131,7 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
-                          onPressed: widget.onBack,
+                          onPressed: _receiving ? null : widget.onBack,
                           icon: const Icon(Icons.arrow_back_rounded),
                           label: const Text('Quay lại'),
                         ),
@@ -92,6 +145,15 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
                   ],
                 ),
                 const SizedBox(height: 8),
+                if (value.value?.blockedReason.isNotEmpty == true)
+                  InlineError(value.value!.blockedReason),
+                if (_status == 'confirmed')
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Đối chiếu dịch vụ đặt kèm, bổ sung hoặc hủy trước khi nhận phòng. Các khoản được chuyển vào lưu trú một lần, giữ giá đã chốt.',
+                    ),
+                  ),
                 AsyncContent(
                   value: value,
                   onRetry: () => ref.invalidate(stayServicesProvider(query)),
@@ -146,6 +208,8 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
                                     color: AsterColors.ink,
                                   ),
                                 ),
+                                if (usage.planned && !usage.cancelled)
+                                  const Text('Đặt trước · chưa nhận phòng'),
                                 const SizedBox(height: 6),
                                 Text(
                                   '${usage.quantity} ${usage.unit} × ${money(usage.price)}',
@@ -249,9 +313,37 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
                     setSheetHeight(context, .95);
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Ghi dịch vụ'),
+                  label: Text(
+                    _status == 'confirmed'
+                        ? 'Thêm dịch vụ đặt kèm'
+                        : 'Ghi dịch vụ',
+                  ),
                 ),
               ),
+            ),
+          ),
+        if (widget.onCheckedIn != null &&
+            ref.watch(authProvider).user?.canEditRooms == true)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_receiveError != null) InlineError(_receiveError!),
+                FilledButton.icon(
+                  key: const Key('check_in_submit'),
+                  onPressed:
+                      _receiving ||
+                          !value.hasValue ||
+                          value.isLoading ||
+                          value.hasError
+                      ? null
+                      : _receive,
+                  icon: const Icon(Icons.login_rounded),
+                  label: Text(_receiving ? 'Đang nhận phòng…' : 'Nhận phòng'),
+                ),
+              ],
             ),
           ),
       ],
@@ -276,6 +368,9 @@ class _StayServicesPanelState extends ConsumerState<StayServicesPanel> {
         AddStayServiceForm(
           key: ValueKey(_formVersion),
           bookingId: widget.booking.id,
+          planned: _status == 'confirmed',
+          bookingLabel:
+              'Phòng ${widget.booking.room.number} · ${widget.booking.customerName}',
           onBack: _back,
           onSaved: _saved,
         ),
@@ -300,8 +395,14 @@ class AddStayServiceForm extends ConsumerStatefulWidget {
     required this.bookingId,
     required this.onBack,
     required this.onSaved,
+    this.initialService,
+    this.bookingLabel,
+    this.planned = false,
   });
   final int bookingId;
+  final HotelService? initialService;
+  final String? bookingLabel;
+  final bool planned;
   final VoidCallback onBack, onSaved;
   @override
   ConsumerState<AddStayServiceForm> createState() => _AddStayServiceFormState();
@@ -310,7 +411,7 @@ class AddStayServiceForm extends ConsumerStatefulWidget {
 class _AddStayServiceFormState extends ConsumerState<AddStayServiceForm> {
   final _form = GlobalKey<FormState>();
   final _quantity = TextEditingController(text: '1');
-  HotelService? _service;
+  late HotelService? _service = widget.initialService;
   bool _busy = false;
   String _key = const Uuid().v4();
   String? _error;
@@ -330,23 +431,28 @@ class _AddStayServiceFormState extends ConsumerState<AddStayServiceForm> {
     });
     setSheetBusy(context, true);
     try {
-      final usage = await ref.read(apiProvider).addServiceUsage(
-        widget.bookingId,
-        {
-          'service_id': _service!.id,
-          'quantity': int.parse(_quantity.text),
-          'expected_unit_price': _service!.price,
-        },
-        _key,
-      );
+      final api = ref.read(apiProvider);
+      final save = widget.planned ? api.addPlannedService : api.addServiceUsage;
+      final usage = await save(widget.bookingId, {
+        'service_id': _service!.id,
+        'quantity': int.parse(_quantity.text),
+        'expected_unit_price': _service!.price,
+      }, _key);
       if (!mounted) return;
       setSheetBusy(context, false);
       setState(() => _busy = false);
+      ref.invalidate(stayServicesProvider);
+      ref.invalidate(revenueProvider);
+      ref.invalidate(folioProvider);
+      ref.invalidate(servicesProvider);
+      ref.invalidate(bookingsProvider);
+      ref.invalidate(bookingLookupProvider);
       showMessage(context, usage.cancelled ? 'Khoản đã hủy' : 'Đã ghi');
       widget.onSaved();
     } catch (error) {
       if (!mounted) return;
       ref.invalidate(stayServicesProvider);
+      ref.invalidate(revenueProvider);
       ref.invalidate(servicesProvider);
       setSheetBusy(context, false);
       setState(() {
@@ -364,29 +470,29 @@ class _AddStayServiceFormState extends ConsumerState<AddStayServiceForm> {
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Column(
+    child: PinnedFormLayout(
+      header: ScreenHeading(
+        title: widget.planned ? 'Thêm dịch vụ đặt kèm' : 'Ghi dịch vụ',
+        subtitle: widget.bookingLabel ?? '',
+        action: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Quay lại',
+              onPressed: _busy ? null : widget.onBack,
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            IconButton(
+              tooltip: 'Đóng',
+              onPressed: _busy ? null : () => Navigator.pop(context),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+      ),
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ScreenHeading(
-            title: 'Ghi dịch vụ',
-            action: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Quay lại',
-                  onPressed: _busy ? null : widget.onBack,
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                IconButton(
-                  tooltip: 'Đóng',
-                  onPressed: _busy ? null : () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-          ),
           if (_service == null)
             ServiceCatalog(
               activeOnly: true,
@@ -466,18 +572,23 @@ class _AddStayServiceFormState extends ConsumerState<AddStayServiceForm> {
               InlineError(_error!, key: const Key('usage_error')),
             ],
             const SizedBox(height: 24),
-            PressScale(
-              child: FilledButton(
-                key: const Key('usage_save'),
-                onPressed: _busy ? null : _save,
-                child: _busy
-                    ? const AsterLoader(size: 24)
-                    : const Text('Ghi nhận'),
-              ),
-            ),
           ],
         ],
       ),
+      footer: _service == null
+          ? OutlinedButton(
+              onPressed: _busy ? null : widget.onBack,
+              child: const Text('Quay lại'),
+            )
+          : FilledButton(
+              key: const Key('usage_save'),
+              onPressed: _busy || !_service!.active || !_service!.unitValid
+                  ? null
+                  : _save,
+              child: _busy
+                  ? const AsterLoader(size: 24)
+                  : const Text('Ghi nhận'),
+            ),
     ),
   );
 }
@@ -517,21 +628,21 @@ class _CancelUsageFormState extends ConsumerState<CancelUsageForm> {
     });
     setSheetBusy(context, true);
     try {
-      await ref
-          .read(apiProvider)
-          .cancelServiceUsage(
-            widget.bookingId,
-            widget.usage.id,
-            _reason.text.trim(),
-          );
+      final api = ref.read(apiProvider);
+      final cancel = widget.usage.planned
+          ? api.cancelPlannedService
+          : api.cancelServiceUsage;
+      await cancel(widget.bookingId, widget.usage.id, _reason.text.trim());
       if (!mounted) return;
       setSheetBusy(context, false);
       setState(() => _busy = false);
       showMessage(context, 'Đã hủy khoản');
+      ref.invalidate(folioProvider);
       widget.onSaved();
     } catch (error) {
       if (!mounted) return;
       ref.invalidate(stayServicesProvider);
+      ref.invalidate(revenueProvider);
       setSheetBusy(context, false);
       setState(() {
         _busy = false;

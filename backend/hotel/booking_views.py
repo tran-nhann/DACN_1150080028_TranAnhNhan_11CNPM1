@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from django.db.models import Q
 from django.utils.dateparse import parse_date
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -17,6 +18,14 @@ from .booking_services import (
 )
 from .models import Booking
 from .permissions import BookingPermission
+from .room_move_serializers import (
+    RoomMoveCommitSerializer,
+    RoomMoveInputSerializer,
+    RoomMoveOptionsSerializer,
+    RoomMoveQuoteSerializer,
+    RoomMoveResponseSerializer,
+)
+from .room_moves import transfer_options, transfer_quote, transfer_room
 from .selectors import booking_queryset
 from .serializers import (
     BookingCreateSerializer,
@@ -53,7 +62,10 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
                         raise ValueError
                 except (ValueError, TypeError) as exc:
                     raise ValidationError({parameter: "Mã phải là số nguyên dương."}) from exc
-                queryset = queryset.filter(**{field: identifier})
+                if parameter == "room":
+                    queryset = queryset.filter(Q(room_id=identifier) | Q(room_moves__from_room_id=identifier) | Q(room_moves__to_room_id=identifier)).distinct()
+                else:
+                    queryset = queryset.filter(**{field: identifier})
         for parameter, field in (("arrival_on", "start_date"), ("departure_on", "end_date")):
             value = self.request.query_params.get(parameter)
             if value is not None:
@@ -129,3 +141,29 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
                 extend_booking(request.user, pk, serializer.validated_data["end_date"])
             ).data
         )
+
+    @extend_schema(responses=RoomMoveOptionsSerializer)
+    @action(detail=True, methods=["get"], url_path="transfer-options")
+    def transfer_options(self, request, pk=None):
+        return Response(RoomMoveOptionsSerializer(transfer_options(request.user, pk)).data)
+
+    @extend_schema(request=RoomMoveInputSerializer, responses=RoomMoveQuoteSerializer)
+    @action(detail=True, methods=["post"], url_path="transfer-quote")
+    def transfer_quote(self, request, pk=None):
+        data = RoomMoveInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        return Response(transfer_quote(request.user, pk, data.validated_data))
+
+    @extend_schema(request=RoomMoveCommitSerializer, responses={200: RoomMoveResponseSerializer, 201: RoomMoveResponseSerializer},
+        parameters=[OpenApiParameter("Idempotency-Key", str, location=OpenApiParameter.HEADER, required=True)])
+    @action(detail=True, methods=["post"])
+    def transfer(self, request, pk=None):
+        data = RoomMoveCommitSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            key = UUID(request.headers.get("Idempotency-Key", ""))
+        except (ValueError, AttributeError) as exc:
+            raise ValidationError("Thiếu Idempotency-Key hợp lệ.") from exc
+        booking, move, created = transfer_room(request.user, pk, key, data.validated_data)
+        return Response({"move_id": move.pk, "booking": BookingSerializer(booking).data},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

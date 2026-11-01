@@ -62,32 +62,58 @@ class DetailField extends StatelessWidget {
     super.key,
     this.copyable = false,
     this.emphasize = false,
+    this.inline = false,
   });
   final String label, value;
-  final bool copyable, emphasize;
+  final bool copyable, emphasize, inline;
   @override
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.center,
     children: [
       Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: AsterColors.muted),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: emphasize ? 22 : 14,
-                color: AsterColors.ink,
-                fontWeight: emphasize ? FontWeight.w800 : FontWeight.w700,
+        child: inline
+            ? Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$label: ',
+                      style: const TextStyle(
+                        color: AsterColors.muted,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    TextSpan(
+                      text: value,
+                      style: const TextStyle(
+                        color: AsterColors.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontSize: 14),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AsterColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: emphasize ? 22 : 14,
+                      color: AsterColors.ink,
+                      fontWeight: emphasize ? FontWeight.w800 : FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
       if (copyable && value.isNotEmpty)
         IconButton(

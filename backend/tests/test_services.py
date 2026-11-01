@@ -205,7 +205,7 @@ def test_catalog_permissions_and_manager_read_only(client, users, stay, service)
     assert client.patch(f"/api/v1/services/{service.pk}/", {"is_active": False}).status_code == 200
     assert client.get("/api/v1/services/?active=true").data["count"] == 0
     assert client.get("/api/v1/services/?active=false").data["count"] == 1
-    assert client.delete(f"/api/v1/services/{service.pk}/").status_code == 405
+    assert client.delete(f"/api/v1/services/{service.pk}/").status_code == 409
 
 
 def test_scoping_reason_validation_and_closed_stay(client, users, stay, service):

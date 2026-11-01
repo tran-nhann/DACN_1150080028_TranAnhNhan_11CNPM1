@@ -1,9 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="Aster Hotel"
+        android:label="Khách sạn Ngàn Sao"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_aster">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
+import 'form_layout.dart';
 
 bool reducedMotion(BuildContext context) {
   final media = MediaQuery.of(context);
@@ -174,17 +175,17 @@ class ConfirmPanel extends StatelessWidget {
     this.busy = false,
     this.error,
     this.destructive = false,
+    this.pinned = false,
   });
   final String title, details, label;
   final VoidCallback onConfirm, onBack;
   final VoidCallback? onClose;
-  final bool busy, destructive;
+  final bool busy, destructive, pinned;
   final String? error;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    padding: const EdgeInsets.all(24),
-    child: Column(
+  Widget build(BuildContext context) {
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -215,27 +216,52 @@ class ConfirmPanel extends StatelessWidget {
           const SizedBox(height: 20),
           InlineError(error!, key: const Key('confirm_error')),
         ],
-        const SizedBox(height: 28),
-        PressScale(
-          child: FilledButton(
-            key: const Key('confirm_action'),
-            style: destructive
-                ? FilledButton.styleFrom(backgroundColor: AsterColors.red)
-                : null,
-            onPressed: busy ? null : onConfirm,
-            child: Text(label),
-          ),
-        ),
-        const SizedBox(height: 8),
-        PressScale(
-          child: TextButton(
-            onPressed: busy ? null : onBack,
-            child: const Text('Quay lại'),
-          ),
-        ),
       ],
-    ),
-  );
+    );
+    final confirm = PressScale(
+      child: FilledButton(
+        key: const Key('confirm_action'),
+        style: destructive
+            ? FilledButton.styleFrom(backgroundColor: AsterColors.red)
+            : null,
+        onPressed: busy ? null : onConfirm,
+        child: Text(label),
+      ),
+    );
+    if (pinned) {
+      return PinnedFormLayout(
+        header: Align(
+          alignment: Alignment.centerLeft,
+          child: IconButton(
+            tooltip: 'Quay lại',
+            onPressed: busy ? null : onBack,
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+        ),
+        body: Padding(padding: const EdgeInsets.only(top: 12), child: content),
+        footer: confirm,
+      );
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          content,
+          const SizedBox(height: 28),
+          confirm,
+          const SizedBox(height: 8),
+          PressScale(
+            child: TextButton(
+              onPressed: busy ? null : onBack,
+              child: const Text('Quay lại'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 Future<bool?> showAsterConfirm(

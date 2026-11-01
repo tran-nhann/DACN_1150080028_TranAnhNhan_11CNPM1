@@ -11,6 +11,8 @@ from .services import application_transaction, normalize_id, record_audit
 
 def ensure_open_stay(booking):
     stay = getattr(booking, "stay", None)
+    if booking.status == Booking.Status.CHECKED_IN and stay is None:
+        raise BookingConflict("Booking đang ở nhưng thiếu hồ sơ nhận phòng. Cần khôi phục hồ sơ lưu trú trước khi ghi dịch vụ hoặc quyết toán.")
     if (
         booking.status != Booking.Status.CHECKED_IN
         or stay is None

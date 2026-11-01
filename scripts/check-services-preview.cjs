@@ -73,7 +73,7 @@ async function openServices(page) {
     await page.getByRole('button', { name: /Giặt ủi/ }).click();
     await type(page.getByRole('textbox', { name: /Số lượng/ }), '2'); await snap('add');
     await page.getByRole('button', { name: 'Ghi nhận', exact: true }).click();
-    await page.getByText('Chưa nhận được kết quả. Thử lại.', { exact: true }).waitFor(); await snap('retry');
+    await page.getByText('Chưa nhận được kết quả. Thử lại.', { exact: true }).last().waitFor(); await snap('retry');
     await page.getByRole('button', { name: 'Ghi nhận', exact: true }).click();
     await page.getByRole('button', { name: 'Ghi dịch vụ', exact: true }).waitFor();
     assert.equal(state.usages.length, 1); assert.equal(state.attempts, 2); assert.equal(state.keys[0], state.keys[1]);
@@ -89,9 +89,12 @@ async function openServices(page) {
     await page.getByRole('tab', { name: 'Thêm', exact: true }).click();
     await page.getByRole('button', { name: 'Dịch vụ', exact: true }).click(); await snap('catalog');
     await page.getByRole('button', { name: /Giặt ủi/ }).click();
+    await page.getByRole('button', { name: 'Sửa dịch vụ', exact: true }).click();
     await type(page.getByRole('textbox', { name: /Đơn giá/ }), '45000');
     await page.getByRole('switch', { name: 'Đang bán', exact: true }).click();
     await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+    await page.getByText('Chi tiết dịch vụ', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Đóng', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Ngừng bán', exact: true }).click();
     await page.getByRole('button', { name: /Giặt ủi/ }).waitFor();
     assert.equal(state.catalog[0].is_active, false); assert.equal(state.usages[0].unit_price, '30000');
